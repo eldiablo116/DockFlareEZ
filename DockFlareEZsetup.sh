@@ -1,16 +1,22 @@
 #!/bin/bash
 
-echo "==============================="
-echo "   DockFlare EZSetup v1.9"
-echo "==============================="
+# Colors
+BLUE='\e[34m'
+ORANGE='\e[38;5;208m'
+GREEN='\e[32m'
+RESET='\e[0m'
+
+# Prefix and Header
+HEADER="${ORANGE}===============================\n   DockFlare EZSetup v2.1\n===============================${RESET}"
+PREFIX="${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]"
+
+# Print header
+echo -e "$HEADER"
 echo ""
 
-PREFIX=$'\e[1;36m[DockFlareEZ]\e[0m'
-
-# 0. Check for system updates before proceeding
+# 0. Check for updates
 echo "$PREFIX 🔍 Checking for available updates..."
 apt update -qq > /dev/null
-
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
 
 if [ "$UPGRADABLE" -gt 0 ]; then
@@ -20,21 +26,17 @@ if [ "$UPGRADABLE" -gt 0 ]; then
     echo "$PREFIX ⬇️ Installing updates..."
     UPGRADE_OUTPUT=$(apt upgrade -y)
     echo "$UPGRADE_OUTPUT"
-
     if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded, 0 newly installed, 0 to remove"; then
-      echo ""
-      echo "$PREFIX ✅ No updates were applied. Some updates may be deferred by Ubuntu's phased rollout."
-      echo "$PREFIX No reboot required. Continuing with DockFlareEZsetup..."
-      echo ""
+      echo "$PREFIX ✅ No updates were applied. Some updates may be deferred."
+      echo "$PREFIX Continuing setup..."
     else
-      echo ""
       read -p "$PREFIX Updates installed. Would you like to reboot now? (y/n): " REBOOTAFTERUPGRADE
       if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
         echo "$PREFIX 🔁 Rebooting now. Please re-run this script after your server comes back online."
         reboot
         exit 0
       else
-        echo "$PREFIX ⚠️ Please reboot manually and then re-run this script."
+        echo "$PREFIX ⚠️ Please reboot manually and re-run this script."
         exit 0
       fi
     fi
@@ -43,24 +45,22 @@ else
   echo "$PREFIX ✅ Great! No packages need upgrading."
 fi
 
-# Ask for essential inputs only
+# Inputs
 read -p "$PREFIX Enter a new admin username: " NEWUSER
 read -p "$PREFIX Enter your Cloudflare email: " CFEMAIL
 read -p "$PREFIX Enter your Cloudflare API token: " CFTOKEN
 read -p "$PREFIX Enter your domain (e.g., example.com): " DOMAIN
 
-# Generate a random safe SSH port
+# SSH port
 SSHPORT=$(shuf -i 2000-65000 -n 1)
 echo "$PREFIX 📦 SSH will be set to port: $SSHPORT"
 
-echo ""
-echo "$PREFIX Setting up system... please wait."
-
-# 1. Create a new sudo user
+# 1. Create user
 adduser --disabled-password --gecos "" "$NEWUSER"
 usermod -aG sudo "$NEWUSER"
+echo "$PREFIX User '$NEWUSER' created and added to sudo.. OK!"
 
-# 2. Choose SSH login method
+# 2. SSH key or password
 read -p "$PREFIX Would you like to set up SSH key login for the new user? (y/n): " SETUPKEYS
 
 if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
@@ -70,50 +70,45 @@ if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
   chmod 700 /home/$NEWUSER/.ssh
   chmod 600 /home/$NEWUSER/.ssh/authorized_keys
   SSH_METHOD="key"
-  echo "$PREFIX ✅ SSH key login configured for user '$NEWUSER'."
+  echo "$PREFIX SSH key login configured for '$NEWUSER'.. OK!"
 else
   SSH_METHOD="password"
-  echo "$PREFIX ⚠️ SSH key setup skipped. Enabling password login..."
-
-  # Generate a random 16-character password
+  echo "$PREFIX SSH key setup skipped. Enabling password login..."
   USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
-
   echo "$NEWUSER:$USERPASS" | chpasswd
-
-  # Enable password login in SSH
   sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/" /etc/ssh/sshd_config
   sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
+  echo "$PREFIX Password login enabled for '$NEWUSER'.. OK!"
 fi
 
-# 3. Harden SSH (leave root login enabled)
+# 3. SSH hardening
 sed -i "s/#Port 22/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
 systemctl restart ssh || systemctl restart ssh.service
+echo "$PREFIX SSH port changed to $SSHPORT and service restarted.. OK!"
 
-# 4. Install Docker & Docker Compose plugin (official repo)
-echo "$PREFIX 🐳 Installing Docker..."
+# 4. Install Docker & Compose
+echo "$PREFIX Installing Docker..."
 apt install -y ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common
-
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
 echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+$(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt update
 apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
 systemctl enable docker
 usermod -aG docker $NEWUSER
+echo "$PREFIX Docker installed and user added to docker group.. OK!"
 
-# 5. Prepare folder structure
+# 5. Create directories
 mkdir -p /opt/traefik
 mkdir -p /opt/containers
 touch /opt/traefik/acme.json
 chmod 600 /opt/traefik/acme.json
+echo "$PREFIX Folder structure created.. OK!"
 
-# 6. Generate Docker Compose for Traefik
+# 6. Traefik Compose config
 cat <<EOF > /opt/traefik/docker-compose.yml
 version: "3.8"
 services:
@@ -145,14 +140,15 @@ networks:
     external: true
 EOF
 
-# 7. Create the external Docker network
 docker network create dockflare || true
+echo "$PREFIX Traefik config and Docker network created.. OK!"
 
-# 8. Launch Traefik
+# 7. Start Traefik
 cd /opt/traefik
 docker compose up -d
+echo "$PREFIX Traefik container launched.. OK!"
 
-# 9. Done + tailored final instructions
+# 8. Summary
 echo ""
 echo "==========================================="
 echo "✅ DockFlareEZsetup is complete!"
@@ -167,15 +163,13 @@ if [[ "$SSH_METHOD" == "key" ]]; then
   echo "🔐 SSH key login enabled for $NEWUSER."
   echo "Reconnect using:"
   echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
-  echo ""
-  echo "User's authorized_keys: /home/$NEWUSER/.ssh/authorized_keys"
 else
   echo ""
   echo "🔑 SSH password login enabled for $NEWUSER."
   echo "Reconnect using:"
   echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
   echo ""
-  echo "Temporary generated password:"
+  echo "Temporary password:"
   echo "  $USERPASS"
   echo "⚠️  Change this password after login using 'passwd'."
 fi
