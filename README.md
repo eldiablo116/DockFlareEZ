@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">🚀 DockFlareEZsetup</h1>
-<p align="center">One-line VPS bootstrapper for Docker + Traefik + Cloudflare DNS</p>
+<p align="center">One-line VPS bootstrapper for Docker + Traefik + Cloudflare DNS + Portainer</p>
 
 ---
 
@@ -25,53 +25,56 @@ bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/D
 2. **A Cloudflare API Token**
    - Go to: [Create an API Token](https://dash.cloudflare.com/profile/api-tokens)
    - Use the **"Edit zone DNS"** template
-   - Scope: your domain only
+   - Required permissions:
+     - Zone:DNS → Edit
+     - Zone:Zone → Read
 
 3. **A domain** (e.g. `example.com`) pointing to your VPS
-   - Add an `A` or `CNAME` record in Cloudflare DNS
+   - Add an `A` record in Cloudflare DNS to your VPS public IP
    - You can leave the orange cloud (proxy) **ON**
-
-4. **(Optional) Your public SSH key**
-   - The script gives you the option to use SSH key or password login
 
 ---
 
 ## 🛠️ What This Script Does
 
+- Verifies your Cloudflare API credentials
+- Creates a test subdomain and confirms DNS propagation
 - Creates a new sudo-enabled user
 - Randomly selects a secure SSH port
-- Lets you choose SSH key login or password-based login
-- Installs Docker and Docker Compose plugin
+- Always uses password-based login (no SSH key prompt)
+- Installs Docker and the Docker Compose plugin
 - Deploys **Traefik** with:
   - Cloudflare DNS-01 SSL certificate automation
   - Auto HTTPS via Let's Encrypt
+- Deploys **Portainer** at `https://portainer.yourdomain.com` via Traefik
 - Creates:
-  - `/opt/traefik/` → contains Traefik config + certs
-  - `/opt/containers/` → your apps go here
+  - `/opt/traefik/` → Traefik config + certs
+  - `/opt/portainer/` → Portainer container config
+  - `/opt/containers/` → where you can add more apps
   - Docker network: `dockflare`
 
 ---
 
 ## 🔁 After Installation
 
-You’ll see your generated SSH port at the end and either:
+You’ll see your generated SSH port at the end and:
 
-🔐 If using SSH key login:
-```bash
-ssh -p YOURPORT youruser@your-server-ip
-```
-
-🔑 If using password login:
 ```bash
 ssh -p YOURPORT youruser@your-server-ip
 # Password will be shown at the end of the script
+```
+
+Then visit:
+
+```
+https://portainer.yourdomain.com
 ```
 
 ---
 
 ## 🐳 Add New Containers
 
-Here’s an example of how to add a service later:
+Here's an example of how to add a service later:
 
 ```yaml
 services:
@@ -90,13 +93,15 @@ networks:
     external: true
 ```
 
+Place new `docker-compose.yml` files under `/opt/containers/` or any directory you wish.
+
 ---
 
 ## 🔒 Security Notes
 
 - SSH is locked to a random high port
-- SSH password login is only enabled if you ask for it
-- Let's Encrypt SSL via Cloudflare DNS (no open port 80 required)
+- Password-based login only (no SSH key support)
+- Cloudflare DNS + Let's Encrypt for SSL — no exposed port 80 required
 
 ---
 
