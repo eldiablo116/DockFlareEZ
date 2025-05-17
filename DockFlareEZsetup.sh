@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "==============================="
-echo "   DockFlare EZSetup v1.2"
+echo "   DockFlare EZSetup v1.3"
 echo "==============================="
 echo ""
 
@@ -20,21 +20,37 @@ echo "Setting up system... please wait."
 adduser --disabled-password --gecos "" "$NEWUSER"
 usermod -aG sudo "$NEWUSER"
 
-# 2. Add SSH key access for the new user (assumes root has key auth already)
-mkdir -p /home/$NEWUSER/.ssh
-cp ~/.ssh/authorized_keys /home/$NEWUSER/.ssh/
-chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/.ssh
-chmod 700 /home/$NEWUSER/.ssh
-chmod 600 /home/$NEWUSER/.ssh/authorized_keys
+# 2. Choose SSH login method
+read -p "Would you like to set up SSH key login for the new user? (y/n): " SETUPKEYS
 
-# 3. Harden SSH (keep root login enabled)
+if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
+  mkdir -p /home/$NEWUSER/.ssh
+  cp ~/.ssh/authorized_keys /home/$NEWUSER/.ssh/
+  chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/.ssh
+  chmod 700 /home/$NEWUSER/.ssh
+  chmod 600 /home/$NEWUSER/.ssh/authorized_keys
+  SSH_METHOD="key"
+  echo "✅ SSH key login configured for user '$NEWUSER'."
+else
+  SSH_METHOD="password"
+  echo "⚠️ SSH key setup skipped. Enabling password login..."
+
+  # Generate a random 16-character password
+  USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
+
+  echo "$NEWUSER:$USERPASS" | chpasswd
+
+  # Enable password login in SSH
+  sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/" /etc/ssh/sshd_config
+  sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
+fi
+
+# 3. Harden SSH (leave root login enabled)
 sed -i "s/#Port 22/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
-# sed -i "s/PermitRootLogin yes/PermitRootLogin no/" /etc/ssh/sshd_config
-sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
 systemctl restart sshd
 
-# 4. Install Docker & Docker Compose plugin
+# 4. Install Docker & Compose plugin
 apt update && apt install -y \
   ca-certificates curl gnupg lsb-release docker.io docker-compose-plugin
 
@@ -86,7 +102,7 @@ docker network create dockflare || true
 cd /opt/traefik
 docker compose up -d
 
-# 9. Done + Reminders + Reboot Prompt
+# 9. Done + tailored final instructions
 echo ""
 echo "==========================================="
 echo "✅ DockFlareEZsetup is complete!"
@@ -94,14 +110,27 @@ echo ""
 echo "• SSH is now set to port $SSHPORT for user '$NEWUSER'"
 echo "• Traefik is live with Cloudflare DNS support"
 echo "• Add containers in /opt/containers and join 'dockflare' network"
-echo ""
 echo "==========================================="
-echo "IMPORTANT:"
-echo "To reconnect after reboot, use:"
-echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
-echo "==========================================="
-echo ""
 
+if [[ "$SSH_METHOD" == "key" ]]; then
+  echo ""
+  echo "🔐 SSH key login enabled for $NEWUSER."
+  echo "Reconnect using:"
+  echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
+  echo ""
+  echo "User public key location: /home/$NEWUSER/.ssh/authorized_keys"
+else
+  echo ""
+  echo "🔑 SSH password login enabled for $NEWUSER."
+  echo "Reconnect using:"
+  echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
+  echo ""
+  echo "Temporary generated password:"
+  echo "  $USERPASS"
+  echo "⚠️ Make sure to change this password after login using 'passwd'."
+fi
+
+echo ""
 read -p "Would you like to reboot now to apply all changes (y/n)? " REBOOTANSWER
 if [[ "$REBOOTANSWER" =~ ^[Yy]$ ]]; then
   echo "Rebooting..."
