@@ -8,7 +8,21 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v2.6\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v2.8\n===============================${RESET}\n"
+
+
+    sleep 2
+  done
+
+  if ! ping -c 1 "$TEST_SUBDOMAIN.$CF_ZONE" &>/dev/null; then
+    echo -e "$PREFIX ❌ DNS did not propagate in time."
+    echo -e "$PREFIX Please check DNS propagation or record creation permissions."
+    exit 1
+  fi
+fi
+fi
+
+# --- Update Check ---
 
 # --- Cloudflare API validation ---
 echo -e "$PREFIX Validating Cloudflare API credentials..."
@@ -35,7 +49,6 @@ else
   echo -e "$PREFIX 🕵️ Created test DNS record: $TEST_SUBDOMAIN.$CF_ZONE"
   echo -e "$PREFIX ⏳ Waiting for DNS propagation..."
 
-  # Ping for up to 60 seconds
   for i in {1..30}; do
     if ping -c 1 "$TEST_SUBDOMAIN.$CF_ZONE" &>/dev/null; then
       echo -e "$PREFIX ✅ DNS record resolved successfully!"
@@ -61,18 +74,8 @@ else
       -H "Content-Type: application/json" > /dev/null
     echo -e "$PREFIX 🧹 Cleaned up test DNS record."
   fi
-    sleep 2
-  done
-
-  if ! ping -c 1 "$TEST_SUBDOMAIN.$CF_ZONE" &>/dev/null; then
-    echo -e "$PREFIX ❌ DNS did not propagate in time."
-    echo -e "$PREFIX Please check DNS propagation or record creation permissions."
-    exit 1
-  fi
-fi
 fi
 
-# --- Update Check ---
 echo -e "$PREFIX \U1F50D Checking for updates..."
 apt update -qq > /dev/null
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
@@ -112,6 +115,37 @@ SSHPORT=$(shuf -i 2000-65000 -n 1)
 echo -e "$PREFIX \U1F4E6 SSH port: $SSHPORT"
 
 # --- Create user ---
+
+# --- Create DNS record for Portainer ---
+PORTAINER_SUBDOMAIN="portainer.$CF_ZONE"
+VPS_IP=$(curl -s ifconfig.me)
+
+# Check if record exists
+RECORD_CHECK=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$PORTAINER_SUBDOMAIN" \
+  -H "Authorization: Bearer $CFTOKEN" \
+  -H "Content-Type: application/json")
+
+EXISTING_RECORD_ID=$(echo "$RECORD_CHECK" | jq -r '.result[0].id')
+EXISTING_IP=$(echo "$RECORD_CHECK" | jq -r '.result[0].content')
+
+if [[ "$EXISTING_RECORD_ID" == "null" || -z "$EXISTING_RECORD_ID" ]]; then
+  echo -e "$PREFIX Creating A record for Portainer: $PORTAINER_SUBDOMAIN -> $VPS_IP"
+  curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
+    -H "Authorization: Bearer $CFTOKEN" \
+    -H "Content-Type: application/json" \
+    --data '{"type":"A","name":"'$PORTAINER_SUBDOMAIN'","content":"'$VPS_IP'","ttl":120,"proxied":false}' > /dev/null
+else
+  if [[ "$EXISTING_IP" != "$VPS_IP" ]]; then
+    echo -e "$PREFIX Updating A record for Portainer: $PORTAINER_SUBDOMAIN -> $VPS_IP"
+    curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$EXISTING_RECORD_ID" \
+      -H "Authorization: Bearer $CFTOKEN" \
+      -H "Content-Type: application/json" \
+      --data '{"type":"A","name":"'$PORTAINER_SUBDOMAIN'","content":"'$VPS_IP'","ttl":120,"proxied":false}' > /dev/null
+  else
+    echo -e "$PREFIX DNS record for Portainer already up-to-date: $PORTAINER_SUBDOMAIN -> $VPS_IP"
+  fi
+fi
+
 adduser --disabled-password --gecos "" "$NEWUSER" > /dev/null
 usermod -aG sudo "$NEWUSER"
 touch "/home/$NEWUSER/.Xauthority"
@@ -124,7 +158,7 @@ USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 echo "$NEWUSER:$USERPASS" | chpasswd
 sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/" /etc/ssh/sshd_config
 sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
-echo -e "$PREFIX Password login enabled for '$NEWUSER'.. OK!"g
+echo -e "$PREFIX Password login enabled for '$NEWUSER'.. OK!"
   sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
   echo -e "$PREFIX Password login enabled.. OK!"
 fi
