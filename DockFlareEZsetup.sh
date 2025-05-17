@@ -1,9 +1,36 @@
 #!/bin/bash
 
 echo "==============================="
-echo "   DockFlare EZSetup v1.4"
+echo "   DockFlare EZSetup v1.5"
 echo "==============================="
 echo ""
+
+# 0. Check for system updates before proceeding
+echo "🔍 Checking for available updates..."
+apt update -qq > /dev/null
+
+UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
+
+if [ "$UPGRADABLE" -gt 0 ]; then
+  echo "🔄 Updates available for your system."
+  read -p "Would you like to install updates now? (y/n): " DOUPGRADE
+  if [[ "$DOUPGRADE" =~ ^[Yy]$ ]]; then
+    echo "⬇️ Installing updates..."
+    apt upgrade -y
+    echo ""
+    read -p "Updates installed. Would you like to reboot now? (y/n): " REBOOTAFTERUPGRADE
+    if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
+      echo "🔁 Rebooting now. Please re-run this script after your server comes back online."
+      reboot
+      exit 0
+    else
+      echo "⚠️ Please reboot manually and then re-run this script."
+      exit 0
+    fi
+  fi
+else
+  echo "✅ Great! No packages need upgrading."
+fi
 
 # Ask for essential inputs only
 read -p "Enter a new admin username: " NEWUSER
@@ -53,8 +80,7 @@ sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
 systemctl restart sshd
 
 # 4. Install Docker & Compose plugin
-apt update && apt install -y \
-  ca-certificates curl gnupg lsb-release docker.io docker-compose-plugin
+apt install -y ca-certificates curl gnupg lsb-release docker.io docker-compose-plugin
 
 systemctl enable docker
 usermod -aG docker $NEWUSER
