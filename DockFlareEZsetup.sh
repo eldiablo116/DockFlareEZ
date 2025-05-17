@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# --- Color definitions ---
+# Colors
 BLUE='\e[34m'
 ORANGE='\e[38;5;208m'
 GREEN='\e[32m'
 RESET='\e[0m'
 
-# Prompt prefix (styled)
+# Prefix & Header
 PREFIX="${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v2.3\n===============================${RESET}\n"
 
-# --- Display header in orange ---
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v2.2\n===============================${RESET}"
-echo ""
-
-# --- Check for system updates ---
+# --- System Update ---
 echo -e "$PREFIX 🔍 Checking for available updates..."
 apt update -qq > /dev/null
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
@@ -23,18 +20,17 @@ if [ "$UPGRADABLE" -gt 0 ]; then
   read -p "$(echo -e "$PREFIX Would you like to install updates now? (y/n): ")" DOUPGRADE
   if [[ "$DOUPGRADE" =~ ^[Yy]$ ]]; then
     echo -e "$PREFIX ⬇️ Installing updates..."
-    UPGRADE_OUTPUT=$(apt upgrade -y)
-    echo "$UPGRADE_OUTPUT"
+    UPGRADE_OUTPUT=$(apt upgrade -y -qq)
     if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded, 0 newly installed, 0 to remove"; then
       echo -e "$PREFIX ✅ No updates were applied. Some updates may be deferred."
     else
       read -p "$(echo -e "$PREFIX Updates installed. Would you like to reboot now? (y/n): ")" REBOOTAFTERUPGRADE
       if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
-        echo -e "$PREFIX 🔁 Rebooting now. Please re-run this script after your server comes back online."
+        echo -e "$PREFIX 🔁 Rebooting now. Please re-run this script after reboot."
         reboot
         exit 0
       else
-        echo -e "$PREFIX ⚠️ Please reboot manually and re-run this script."
+        echo -e "$PREFIX ⚠️ Please reboot manually before running this script again."
         exit 0
       fi
     fi
@@ -43,27 +39,29 @@ else
   echo -e "$PREFIX ✅ Great! No packages need upgrading."
 fi
 
-# --- Collect input ---
+# --- Inputs ---
 read -p "$(echo -e "$PREFIX Enter a new admin username: ")" NEWUSER
 read -p "$(echo -e "$PREFIX Enter your Cloudflare email: ")" CFEMAIL
 read -p "$(echo -e "$PREFIX Enter your Cloudflare API token: ")" CFTOKEN
 read -p "$(echo -e "$PREFIX Enter your domain (e.g., example.com): ")" DOMAIN
 
-# Generate a random SSH port
+# Random SSH port
 SSHPORT=$(shuf -i 2000-65000 -n 1)
 echo -e "$PREFIX 📦 SSH will be set to port: $SSHPORT"
 
-# --- Add new sudo user ---
-adduser --disabled-password --gecos "" "$NEWUSER"
+# --- Create user ---
+adduser --disabled-password --gecos "" "$NEWUSER" > /dev/null
 usermod -aG sudo "$NEWUSER"
-echo -e "$PREFIX User '$NEWUSER' created and added to sudo.. OK!"
+mkdir -p /home/$NEWUSER
+touch /home/$NEWUSER/.Xauthority
+chown $NEWUSER:$NEWUSER /home/$NEWUSER/.Xauthority
+echo -e "$PREFIX User '$NEWUSER' created, Xauthority added.. OK!"
 
-# --- SSH key or password setup ---
+# --- SSH Setup ---
 read -p "$(echo -e "$PREFIX Would you like to set up SSH key login for the new user? (y/n): ")" SETUPKEYS
-
 if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
   mkdir -p /home/$NEWUSER/.ssh
-  cp ~/.ssh/authorized_keys /home/$NEWUSER/.ssh/
+  cp ~/.ssh/authorized_keys /home/$NEWUSER/.ssh/ 2>/dev/null
   chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/.ssh
   chmod 700 /home/$NEWUSER/.ssh
   chmod 600 /home/$NEWUSER/.ssh/authorized_keys
@@ -71,7 +69,6 @@ if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
   echo -e "$PREFIX SSH key login configured for '$NEWUSER'.. OK!"
 else
   SSH_METHOD="password"
-  echo -e "$PREFIX SSH key setup skipped. Enabling password login..."
   USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
   echo "$NEWUSER:$USERPASS" | chpasswd
   sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/" /etc/ssh/sshd_config
@@ -79,34 +76,34 @@ else
   echo -e "$PREFIX Password login enabled for '$NEWUSER'.. OK!"
 fi
 
-# --- SSH hardening ---
+# --- SSH Port ---
 sed -i "s/#Port 22/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
 systemctl restart ssh || systemctl restart ssh.service
 echo -e "$PREFIX SSH port changed to $SSHPORT and SSH restarted.. OK!"
 
-# --- Install Docker & Compose ---
+# --- Install Docker ---
 echo -e "$PREFIX Installing Docker and Compose..."
-apt install -y ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common
+apt install -y -qq ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common > /dev/null
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 echo \
 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
 $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-systemctl enable docker
+apt update -qq > /dev/null
+apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
+systemctl enable docker > /dev/null
 usermod -aG docker $NEWUSER
 echo -e "$PREFIX Docker installed and user added to docker group.. OK!"
 
-# --- Folder setup ---
+# --- Directories ---
 mkdir -p /opt/traefik
 mkdir -p /opt/containers
 touch /opt/traefik/acme.json
 chmod 600 /opt/traefik/acme.json
 echo -e "$PREFIX Folder structure created.. OK!"
 
-# --- Create Traefik Compose file ---
+# --- Traefik Docker Compose ---
 cat <<EOF > /opt/traefik/docker-compose.yml
 version: "3.8"
 services:
@@ -138,15 +135,11 @@ networks:
     external: true
 EOF
 
-docker network create dockflare || true
-echo -e "$PREFIX Traefik Compose config and Docker network created.. OK!"
+docker network create dockflare > /dev/null 2>&1 || true
+cd /opt/traefik && docker compose up -d > /dev/null
+echo -e "$PREFIX Traefik container and network launched.. OK!"
 
-# --- Start Traefik ---
-cd /opt/traefik
-docker compose up -d
-echo -e "$PREFIX Traefik container launched.. OK!"
-
-# --- Final info ---
+# --- Final Message ---
 echo ""
 echo "==========================================="
 echo "✅ DockFlareEZsetup is complete!"
