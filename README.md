@@ -115,4 +115,4 @@ Suggestions and PRs welcome!
 
 ---
 
-©️ 2024 – eldiablo116 – Built for fast, secure, repeatable VPS launches.
+©️ 2025 – eldiablo116 – Built for fast, secure, repeatable VPS launches.
