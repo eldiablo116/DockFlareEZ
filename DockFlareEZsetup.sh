@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "==============================="
-echo "   DockFlare EZSetup v1.8"
+echo "   DockFlare EZSetup v1.9"
 echo "==============================="
 echo ""
 
@@ -88,10 +88,21 @@ fi
 # 3. Harden SSH (leave root login enabled)
 sed -i "s/#Port 22/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
-systemctl restart sshd
+systemctl restart ssh || systemctl restart ssh.service
 
-# 4. Install Docker & Compose plugin
-apt install -y ca-certificates curl gnupg lsb-release docker.io docker-compose-plugin
+# 4. Install Docker & Docker Compose plugin (official repo)
+echo "$PREFIX 🐳 Installing Docker..."
+apt install -y ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common
+
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 systemctl enable docker
 usermod -aG docker $NEWUSER
