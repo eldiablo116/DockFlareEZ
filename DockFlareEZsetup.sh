@@ -1,17 +1,19 @@
 #!/bin/bash
 
 echo "==============================="
-echo "   DockFlare EZSetup v1.3"
+echo "   DockFlare EZSetup v1.4"
 echo "==============================="
 echo ""
 
-# Ask for inputs
+# Ask for essential inputs only
 read -p "Enter a new admin username: " NEWUSER
-echo "⚠️  Choose a non-standard SSH port between 1024 and 65535 to improve security."
-read -p "Enter new SSH port (e.g., 2222): " SSHPORT
 read -p "Enter your Cloudflare email: " CFEMAIL
 read -p "Enter your Cloudflare API token: " CFTOKEN
 read -p "Enter your domain (e.g., example.com): " DOMAIN
+
+# Generate a random safe SSH port
+SSHPORT=$(shuf -i 2000-65000 -n 1)
+echo "📦 SSH will be set to port: $SSHPORT"
 
 echo ""
 echo "Setting up system... please wait."
@@ -118,7 +120,7 @@ if [[ "$SSH_METHOD" == "key" ]]; then
   echo "Reconnect using:"
   echo "  ssh -p $SSHPORT $NEWUSER@your-server-ip"
   echo ""
-  echo "User public key location: /home/$NEWUSER/.ssh/authorized_keys"
+  echo "User's authorized_keys: /home/$NEWUSER/.ssh/authorized_keys"
 else
   echo ""
   echo "🔑 SSH password login enabled for $NEWUSER."
@@ -127,7 +129,7 @@ else
   echo ""
   echo "Temporary generated password:"
   echo "  $USERPASS"
-  echo "⚠️ Make sure to change this password after login using 'passwd'."
+  echo "⚠️  Change this password after login using 'passwd'."
 fi
 
 echo ""
