@@ -8,20 +8,19 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v3.0\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v3.1\n===============================${RESET}\n"
 
-# --- User Input ---
-read -p "$(echo -e "$PREFIX Enter new admin username: ")" NEWUSER
-read -p "$(echo -e "$PREFIX Cloudflare email: ")" CFEMAIL
-read -p "$(echo -e "$PREFIX Cloudflare API token: ")" CFTOKEN
-read -p "$(echo -e "$PREFIX Your domain (e.g., example.com): ")" DOMAIN
+# --- Track Success Flags ---
+UPDATE_OK=false
+CF_OK=false
+DNS_OK=false
+USER_OK=false
+DOCKER_OK=false
+TRAEFIK_OK=false
+PORTAINER_OK=false
 
-# --- Random SSH Port ---
-SSHPORT=$(shuf -i 2000-65000 -n 1)
-echo -e "$PREFIX 📦 SSH port: $SSHPORT"
-
-# --- Update Check ---
-echo -e "$PREFIX 🔍 Checking for updates..."
+# --- Update Check First ---
+echo -e "$PREFIX 🔍 Checking for system updates..."
 apt update -qq > /dev/null
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
 
@@ -33,138 +32,125 @@ if [ "$UPGRADABLE" -gt 0 ]; then
     UPGRADE_OUTPUT=$(apt upgrade -y -qq)
     if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
       echo -e "$PREFIX ✅ No updates applied (phased)."
+    fi
+    read -p "$(echo -e "$PREFIX Reboot now to finish updates? (y/n): ")" REBOOTAFTERUPGRADE
+    if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
+      echo -e "$PREFIX 🔁 Rebooting. Please re-run this script."
+      reboot
+      exit 0
     else
-      read -p "$(echo -e "$PREFIX Reboot now to finish updates? (y/n): ")" REBOOTAFTERUPGRADE
-      if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
-        echo -e "$PREFIX 🔁 Rebooting. Re-run script after restart."
-        reboot
-        exit 0
-      else
-        echo -e "$PREFIX ⚠️ Reboot manually later."
-        exit 0
-      fi
+      echo -e "$PREFIX ⚠️ Please reboot manually before re-running this script."
+      exit 0
     fi
   fi
 else
   echo -e "$PREFIX ✅ System is up to date."
 fi
+UPDATE_OK=true
 
-# --- Cloudflare Check ---
+# --- Cloudflare Input ---
+read -p "$(echo -e "$PREFIX Cloudflare email: ")" CFEMAIL
+read -p "$(echo -e "$PREFIX Cloudflare API token: ")" CFTOKEN
+read -p "$(echo -e "$PREFIX Your domain (e.g., example.com): ")" DOMAIN
+
+# --- Cloudflare Validation ---
 CF_ZONE=$(echo "$DOMAIN" | awk -F. '{print $(NF-1)"."$NF}')
 CF_ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$CF_ZONE" \
   -H "Authorization: Bearer $CFTOKEN" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 if [[ "$CF_ZONE_ID" == "null" || -z "$CF_ZONE_ID" ]]; then
-  echo -e "$PREFIX ❌ Failed to verify Cloudflare API credentials or domain ($CF_ZONE)."
+  echo -e "$PREFIX ❌ Invalid Cloudflare credentials or domain."
   exit 1
+else
+  echo -e "$PREFIX ✅ Cloudflare API verified. Zone ID: $CF_ZONE_ID"
+  CF_OK=true
 fi
 
-echo -e "$PREFIX ✅ Cloudflare API verified. Zone ID: $CF_ZONE_ID"
-
-# --- DNS Test ---
-TEST_SUBDOMAIN="dockflareez-test-$(shuf -i 1000-9999 -n 1)"
+# --- DNS Propagation Test ---
+TEST_SUB="dockflareez-test-$(shuf -i 1000-9999 -n 1)"
 VPS_IP=$(curl -s ifconfig.me)
 
 curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
   -H "Authorization: Bearer $CFTOKEN" \
   -H "Content-Type: application/json" \
-  --data "{\"type\":\"A\",\"name\":\"$TEST_SUBDOMAIN.$CF_ZONE\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}" > /dev/null
+  --data "{\"type\":\"A\",\"name\":\"$TEST_SUB.$CF_ZONE\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}" > /dev/null
 
-echo -e "$PREFIX 🕵️ Created test record: $TEST_SUBDOMAIN.$CF_ZONE"
+echo -e "$PREFIX 🕵️ Created test DNS record: $TEST_SUB.$CF_ZONE"
 echo -e "$PREFIX ⏳ Waiting for DNS to resolve..."
 
 for i in {1..30}; do
-  if ping -c 1 "$TEST_SUBDOMAIN.$CF_ZONE" &>/dev/null; then
-    echo -e "$PREFIX ✅ DNS resolved!"
+  if ping -c 1 "$TEST_SUB.$CF_ZONE" &>/dev/null; then
+    echo -e "$PREFIX ✅ DNS resolved successfully."
+    DNS_OK=true
     break
   fi
   sleep 2
 done
 
-if ! ping -c 1 "$TEST_SUBDOMAIN.$CF_ZONE" &>/dev/null; then
-  echo -e "$PREFIX ❌ DNS propagation failed."
+if [ "$DNS_OK" != true ]; then
+  echo -e "$PREFIX ❌ DNS failed to resolve after 60 seconds."
   exit 1
 fi
 
-RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$TEST_SUBDOMAIN.$CF_ZONE" \
+# Clean up test record
+RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$TEST_SUB.$CF_ZONE" \
   -H "Authorization: Bearer $CFTOKEN" | jq -r '.result[0].id')
 
 if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" ]]; then
   curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
     -H "Authorization: Bearer $CFTOKEN" > /dev/null
-  echo -e "$PREFIX 🧹 Cleaned up test record."
+  echo -e "$PREFIX 🧹 Cleaned up test DNS record."
 fi
 
-# --- Add Portainer A Record ---
-PORTAINER_SUB="portainer.$CF_ZONE"
-RECORD_EXISTS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$PORTAINER_SUB" \
-  -H "Authorization: Bearer $CFTOKEN")
-EXISTING_ID=$(echo "$RECORD_EXISTS" | jq -r '.result[0].id')
-EXISTING_IP=$(echo "$RECORD_EXISTS" | jq -r '.result[0].content')
+# --- Username Prompt ---
+read -p "$(echo -e "$PREFIX Enter new admin username: ")" NEWUSER
 
-if [[ "$EXISTING_ID" == "null" || -z "$EXISTING_ID" ]]; then
-  echo -e "$PREFIX Creating A record for Portainer..."
-  curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
-    -H "Authorization: Bearer $CFTOKEN" \
-    -H "Content-Type: application/json" \
-    --data "{\"type\":\"A\",\"name\":\"$PORTAINER_SUB\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}" > /dev/null
-else
-  if [[ "$EXISTING_IP" != "$VPS_IP" ]]; then
-    echo -e "$PREFIX Updating A record for Portainer..."
-    curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$EXISTING_ID" \
-      -H "Authorization: Bearer $CFTOKEN" \
-      -H "Content-Type: application/json" \
-      --data "{\"type\":\"A\",\"name\":\"$PORTAINER_SUB\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}" > /dev/null
-  else
-    echo -e "$PREFIX Portainer A record already up-to-date."
-  fi
-fi
+# --- SSH Setup ---
+SSHPORT=$(shuf -i 2000-65000 -n 1)
+USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 
-# --- User & SSH ---
 adduser --disabled-password --gecos "" "$NEWUSER" > /dev/null
 usermod -aG sudo "$NEWUSER"
-touch /home/$NEWUSER/.Xauthority
-chown $NEWUSER:$NEWUSER /home/$NEWUSER/.Xauthority
-PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
-echo "$NEWUSER:$PASS" | chpasswd
+echo "$NEWUSER:$USERPASS" | chpasswd
+touch "/home/$NEWUSER/.Xauthority"
+chown $NEWUSER:$NEWUSER "/home/$NEWUSER/.Xauthority"
 sed -i "s/#Port 22/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/Port .*/Port $SSHPORT/" /etc/ssh/sshd_config
 sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/" /etc/ssh/sshd_config
 systemctl restart ssh || systemctl restart ssh.service
-echo -e "$PREFIX User created: $NEWUSER"
-echo -e "$PREFIX SSH login: ssh -p $SSHPORT $NEWUSER@your-server-ip"
-echo -e "$PREFIX Temporary password: $PASS"
+USER_OK=true
+echo -e "$PREFIX 👤 User '$NEWUSER' created with password login."
+echo -e "$PREFIX 🔐 SSH set to port $SSHPORT"
 
-# --- Install Docker ---
-echo -e "$PREFIX Installing Docker..."
+# --- Docker Install ---
+echo -e "$PREFIX 🐳 Installing Docker..."
 apt install -y -qq ca-certificates curl gnupg lsb-release > /dev/null
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor \
   -o /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
   https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
   > /etc/apt/sources.list.d/docker.list
 
 apt update -qq
 apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
-systemctl enable docker
-usermod -aG docker $NEWUSER
-echo -e "$PREFIX Docker installed.. OK!"
+systemctl enable docker > /dev/null
+usermod -aG docker "$NEWUSER"
+DOCKER_OK=true
+echo -e "$PREFIX ✅ Docker installed."
 
-# --- Traefik & Portainer Setup ---
-mkdir -p /opt/traefik /opt/portainer
-touch /opt/traefik/acme.json
+# --- Deploy Traefik ---
+mkdir -p /opt/traefik && touch /opt/traefik/acme.json
 chmod 600 /opt/traefik/acme.json
 
-# Traefik Docker Compose
 cat <<EOF > /opt/traefik/docker-compose.yml
 version: "3"
 services:
   traefik:
     image: traefik:v2.11
     container_name: traefik
+    restart: unless-stopped
     command:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -176,11 +162,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - CF_API_TOKEN=$CFTOKEN
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./acme.json:/letsencrypt/acme.json
-    environment:
-      - CF_API_TOKEN=$CFTOKEN
     networks:
       - dockflare
 networks:
@@ -188,11 +174,13 @@ networks:
     external: true
 EOF
 
-docker network create dockflare || true
-cd /opt/traefik && docker compose up -d
-echo -e "$PREFIX Traefik deployed.. OK!"
+docker network create dockflare > /dev/null 2>&1 || true
+cd /opt/traefik && docker compose up -d && TRAEFIK_OK=true
+echo -e "$PREFIX 🚦 Traefik deployed."
 
-# Portainer Docker Compose
+# --- Deploy Portainer ---
+mkdir -p /opt/portainer
+
 cat <<EOF > /opt/portainer/docker-compose.yml
 version: "3"
 services:
@@ -202,7 +190,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(\`$PORTAINER_SUB\`)"
+      - "traefik.http.routers.portainer.rule=Host(\`portainer.$CF_ZONE\`)"
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=cloudflare"
     volumes:
@@ -217,5 +205,18 @@ networks:
     external: true
 EOF
 
-cd /opt/portainer && docker compose up -d
-echo -e "$PREFIX Portainer deployed at https://$PORTAINER_SUB .. OK!"
+cd /opt/portainer && docker compose up -d && PORTAINER_OK=true
+echo -e "$PREFIX 🧭 Portainer deployed at https://portainer.$CF_ZONE"
+
+# --- Summary Report ---
+echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
+echo -e "$PREFIX System update:        $([ "$UPDATE_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX Cloudflare verified:  $([ "$CF_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX DNS test passed:      $([ "$DNS_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX User created:         $([ "$USER_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX Docker installed:     $([ "$DOCKER_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX Traefik running:      $([ "$TRAEFIK_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX Portainer running:    $([ "$PORTAINER_OK" = true ] && echo ✅ || echo ❌)"
+
+echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@<your-server-ip>${RESET}"
+echo -e "${GREEN}Temporary password: $USERPASS${RESET}"
