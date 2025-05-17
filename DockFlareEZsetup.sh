@@ -1,65 +1,67 @@
 #!/bin/bash
 
 echo "==============================="
-echo "   DockFlare EZSetup v1.7"
+echo "   DockFlare EZSetup v1.8"
 echo "==============================="
 echo ""
 
+PREFIX=$'\e[1;36m[DockFlareEZ]\e[0m'
+
 # 0. Check for system updates before proceeding
-echo "🔍 Checking for available updates..."
+echo "$PREFIX 🔍 Checking for available updates..."
 apt update -qq > /dev/null
 
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
 
 if [ "$UPGRADABLE" -gt 0 ]; then
-  echo "🔄 Updates available for your system."
-  read -p "Would you like to install updates now? (y/n): " DOUPGRADE
+  echo "$PREFIX 🔄 Updates available for your system."
+  read -p "$PREFIX Would you like to install updates now? (y/n): " DOUPGRADE
   if [[ "$DOUPGRADE" =~ ^[Yy]$ ]]; then
-    echo "⬇️ Installing updates..."
+    echo "$PREFIX ⬇️ Installing updates..."
     UPGRADE_OUTPUT=$(apt upgrade -y)
     echo "$UPGRADE_OUTPUT"
 
     if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded, 0 newly installed, 0 to remove"; then
       echo ""
-      echo "✅ No updates were applied. Some updates may be deferred by Ubuntu's phased rollout."
-      echo "No reboot required. Continuing with DockFlareEZsetup..."
+      echo "$PREFIX ✅ No updates were applied. Some updates may be deferred by Ubuntu's phased rollout."
+      echo "$PREFIX No reboot required. Continuing with DockFlareEZsetup..."
       echo ""
     else
       echo ""
-      read -p "Updates installed. Would you like to reboot now? (y/n): " REBOOTAFTERUPGRADE
+      read -p "$PREFIX Updates installed. Would you like to reboot now? (y/n): " REBOOTAFTERUPGRADE
       if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
-        echo "🔁 Rebooting now. Please re-run this script after your server comes back online."
+        echo "$PREFIX 🔁 Rebooting now. Please re-run this script after your server comes back online."
         reboot
         exit 0
       else
-        echo "⚠️ Please reboot manually and then re-run this script."
+        echo "$PREFIX ⚠️ Please reboot manually and then re-run this script."
         exit 0
       fi
     fi
   fi
 else
-  echo "✅ Great! No packages need upgrading."
+  echo "$PREFIX ✅ Great! No packages need upgrading."
 fi
 
 # Ask for essential inputs only
-read -p "Enter a new admin username: " NEWUSER
-read -p "Enter your Cloudflare email: " CFEMAIL
-read -p "Enter your Cloudflare API token: " CFTOKEN
-read -p "Enter your domain (e.g., example.com): " DOMAIN
+read -p "$PREFIX Enter a new admin username: " NEWUSER
+read -p "$PREFIX Enter your Cloudflare email: " CFEMAIL
+read -p "$PREFIX Enter your Cloudflare API token: " CFTOKEN
+read -p "$PREFIX Enter your domain (e.g., example.com): " DOMAIN
 
 # Generate a random safe SSH port
 SSHPORT=$(shuf -i 2000-65000 -n 1)
-echo "📦 SSH will be set to port: $SSHPORT"
+echo "$PREFIX 📦 SSH will be set to port: $SSHPORT"
 
 echo ""
-echo "Setting up system... please wait."
+echo "$PREFIX Setting up system... please wait."
 
 # 1. Create a new sudo user
 adduser --disabled-password --gecos "" "$NEWUSER"
 usermod -aG sudo "$NEWUSER"
 
 # 2. Choose SSH login method
-read -p "Would you like to set up SSH key login for the new user? (y/n): " SETUPKEYS
+read -p "$PREFIX Would you like to set up SSH key login for the new user? (y/n): " SETUPKEYS
 
 if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
   mkdir -p /home/$NEWUSER/.ssh
@@ -68,10 +70,10 @@ if [[ "$SETUPKEYS" =~ ^[Yy]$ ]]; then
   chmod 700 /home/$NEWUSER/.ssh
   chmod 600 /home/$NEWUSER/.ssh/authorized_keys
   SSH_METHOD="key"
-  echo "✅ SSH key login configured for user '$NEWUSER'."
+  echo "$PREFIX ✅ SSH key login configured for user '$NEWUSER'."
 else
   SSH_METHOD="password"
-  echo "⚠️ SSH key setup skipped. Enabling password login..."
+  echo "$PREFIX ⚠️ SSH key setup skipped. Enabling password login..."
 
   # Generate a random 16-character password
   USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
@@ -168,10 +170,10 @@ else
 fi
 
 echo ""
-read -p "Would you like to reboot now to apply all changes (y/n)? " REBOOTANSWER
+read -p "$PREFIX Would you like to reboot now to apply all changes (y/n)? " REBOOTANSWER
 if [[ "$REBOOTANSWER" =~ ^[Yy]$ ]]; then
-  echo "Rebooting..."
+  echo "$PREFIX Rebooting..."
   reboot
 else
-  echo "Reboot skipped. It's recommended to reboot manually before using Docker as the new user."
+  echo "$PREFIX Reboot skipped. It's recommended to reboot manually before using Docker as the new user."
 fi
