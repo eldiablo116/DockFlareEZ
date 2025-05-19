@@ -12,7 +12,7 @@
 SSH into your **fresh Ubuntu VPS** as `root` and run:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/DockFlareEZsetup.sh)
+bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/DockFlareEZsetup.sh)
 ```
 
 ---
