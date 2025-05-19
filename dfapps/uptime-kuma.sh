@@ -48,13 +48,13 @@ services:
 
       # HTTP
       traefik.http.routers.${APP_ID}-http.entrypoints: web
-      traefik.http.routers.${APP_ID}-http.rule: "Host(\\\"${SUBDOMAIN}.${CF_ZONE}\\\")"
+      traefik.http.routers.${APP_ID}-http.rule: "Host('${SUBDOMAIN}.${CF_ZONE}')"
       traefik.http.routers.${APP_ID}-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file
       traefik.http.routers.${APP_ID}-http.service: ${APP_ID}
 
       # HTTPS
       traefik.http.routers.${APP_ID}.entrypoints: websecure
-      traefik.http.routers.${APP_ID}.rule: "Host(\\\"${SUBDOMAIN}.${CF_ZONE}\\\")"
+      traefik.http.routers.${APP_ID}.rule: "Host('${SUBDOMAIN}.${CF_ZONE}')"
       traefik.http.routers.${APP_ID}.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file
       traefik.http.routers.${APP_ID}.tls.certresolver: cloudflare
       traefik.http.routers.${APP_ID}.tls.options: securetls@file
@@ -77,11 +77,11 @@ echo -e "$PREFIX 🚀 Deploying $APP_NAME..."
 docker compose up -d
 
 # --- Wait for container to come up ---
-echo -e "$PREFIX ⏳ Waiting for '$APP_ID' container to start..."
+echo -e "$PREFIX ⏳ Waiting for '${APP_ID}' container to start..."
 sleep 5
 
 if ! docker ps --format '{{.Names}}' | grep -q "$APP_ID"; then
-  echo -e "$PREFIX ❌ Container '$APP_ID' failed to start. Please check logs."
+  echo -e "$PREFIX ❌ Container '${APP_ID}' failed to start. Please check logs."
   exit 1
 fi
 
@@ -97,4 +97,3 @@ fi
 
 # --- Result ---
 echo -e "$PREFIX ✅ $APP_NAME deployed at https://$SUBDOMAIN.$CF_ZONE"
-
