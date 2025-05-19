@@ -39,8 +39,12 @@ if [ ${#EXISTING_CONTAINERS[@]} -gt 0 ]; then
     apt purge -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
     apt autoremove -y -qq > /dev/null 2>&1
     rm -rf /var/lib/docker /etc/docker /var/lib/containerd /var/run/docker.sock > /dev/null 2>&1
-
     echo -e "$PREFIX ✅ Docker and related components uninstalled."
+
+    echo -e "$PREFIX 🔐 Resetting SSH port to 22..."
+    sed -i 's/^Port .*/Port 22/' /etc/ssh/sshd_config
+    systemctl restart ssh || systemctl restart ssh.service
+    echo -e "$PREFIX 🔐 SSH port reset to 22 for next login."
 
     echo -e "$PREFIX 🔁 Reboot is required to complete cleanup."
     echo -e "$PREFIX 💡 After reboot, please re-run this script from a fresh terminal session."
