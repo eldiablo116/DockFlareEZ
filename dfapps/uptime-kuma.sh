@@ -43,18 +43,18 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/app/data
-        labels:
+    labels:
       traefik.enable: true
 
       # HTTP Router
       traefik.http.routers.${APP_ID}-http.entrypoints: web
-      traefik.http.routers.${APP_ID}-http.rule: 'Host("${SUBDOMAIN}.${CF_ZONE}")'
+      traefik.http.routers.${APP_ID}-http.rule: "Host(\"${SUBDOMAIN}.${CF_ZONE}\")"
       traefik.http.routers.${APP_ID}-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.${APP_ID}-http.service: ${APP_ID}
 
       # HTTPS Router
       traefik.http.routers.${APP_ID}.entrypoints: websecure
-      traefik.http.routers.${APP_ID}.rule: 'Host("${SUBDOMAIN}.${CF_ZONE}")'
+      traefik.http.routers.${APP_ID}.rule: "Host(\"${SUBDOMAIN}.${CF_ZONE}\")"
       traefik.http.routers.${APP_ID}.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.${APP_ID}.tls.certresolver: cloudflare
       traefik.http.routers.${APP_ID}.tls.options: securetls@file
@@ -63,7 +63,6 @@ services:
       # Internal port
       traefik.http.services.${APP_ID}.loadbalancer.server.port: 3001
 
-
     networks:
       - dockflare
 
@@ -71,6 +70,7 @@ networks:
   dockflare:
     external: true
 EOF
+
 
 
 # --- Deploy ---
