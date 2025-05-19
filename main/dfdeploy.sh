@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# --- Version ---
+VERSION="v1.1"
+
 # --- Colors ---
 BLUE='\e[34m'
 ORANGE='\e[38;5;208m'
