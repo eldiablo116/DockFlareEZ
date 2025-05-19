@@ -115,7 +115,16 @@ if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" ]]; then
 fi
 
 # --- Username Prompt ---
-read -p "$(echo -e "$PREFIX Enter new admin username: ")" NEWUSER
+while true; do
+  read -p "$(echo -e "$PREFIX Enter new admin username: ")" NEWUSER
+
+  # Validate username (alphanumeric + optional underscore or hyphen, no dots)
+  if [[ "$NEWUSER" =~ ^[a-z_][a-z0-9_-]{2,31}$ ]]; then
+    break
+  else
+    echo -e "$PREFIX ❌ Invalid username. Use only lowercase letters, numbers, underscores or hyphens. No dots or special chars."
+  fi
+done
 
 # --- SSH Setup ---
 SSHPORT=$(shuf -i 2000-65000 -n 1)
