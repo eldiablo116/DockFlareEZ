@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4c\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4d\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -247,14 +247,14 @@ echo -e "$PREFIX ✅ Docker installed."
 # --- Create DNS Helper Script ---
 echo -e "$PREFIX 🛠️ Creating DNS helper script..."
 
-cat <<'EOF' > /opt/dns-helper.sh
+cat <<EOF > /opt/dns-helper.sh
 #!/bin/bash
 
 # --- Usage ---
 # ./dns-helper.sh <subdomain> <domain> <ip>
 # Requires CLOUDFLARE_EMAIL and CLOUDFLARE_API_KEY to be exported
 
-if [ "$#" -ne 3 ]; then
+if [ "\$#" -ne 3 ]; then
   echo "[dns-helper] ❌ Usage: \$0 <subdomain> <domain> <ip>"
   exit 1
 fi
@@ -272,9 +272,9 @@ if [ -z "\$CLOUDFLARE_EMAIL" ] || [ -z "\$CLOUDFLARE_API_KEY" ]; then
 fi
 
 # --- Get Zone ID ---
-ZONE_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=\${DOMAIN}" \\
-  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
-  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+ZONE_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=\${DOMAIN}" \
+  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \
+  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 if [ -z "\$ZONE_ID" ] || [ "\$ZONE_ID" == "null" ]; then
@@ -283,26 +283,26 @@ if [ -z "\$ZONE_ID" ] || [ "\$ZONE_ID" == "null" ]; then
 fi
 
 # --- Check if DNS record already exists ---
-EXISTING_RECORD_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?name=\${FQDN}" \\
-  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
-  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+EXISTING_RECORD_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?name=\${FQDN}" \
+  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \
+  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 # --- Create or Update record with proxied true ---
-RECORD_PAYLOAD="{\"type\":\"A\",\"name\":\"\$FQDN\",\"content\":\"\$IP\",\"ttl\":120,\"proxied\":\${PROXIED}}"
+RECORD_PAYLOAD="{\\\"type\\\":\\\"A\\\",\\\"name\\\":\\\"\$FQDN\\\",\\\"content\\\":\\\"\$IP\\\",\\\"ttl\\\":120,\\\"proxied\\\":\${PROXIED}}"
 
 if [[ -n "\$EXISTING_RECORD_ID" && "\$EXISTING_RECORD_ID" != "null" ]]; then
-  RESPONSE=\$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records/\${EXISTING_RECORD_ID}" \\
-    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
-    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
-    -H "Content-Type: application/json" \\
+  RESPONSE=\$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records/\${EXISTING_RECORD_ID}" \
+    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \
+    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \
+    -H "Content-Type: application/json" \
     --data "\$RECORD_PAYLOAD")
   ACTION="updated"
 else
-  RESPONSE=\$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records" \\
-    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
-    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
-    -H "Content-Type: application/json" \\
+  RESPONSE=\$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records" \
+    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \
+    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \
+    -H "Content-Type: application/json" \
     --data "\$RECORD_PAYLOAD")
   ACTION="created"
 fi
@@ -317,7 +317,6 @@ EOF
 
 chmod +x /opt/dns-helper.sh
 echo -e "$PREFIX ✅ DNS helper ready: /opt/dns-helper.sh"
-
 
 # --- Deploy Traefik ---
 mkdir -p /opt/traefik
