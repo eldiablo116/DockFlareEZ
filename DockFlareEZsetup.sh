@@ -57,8 +57,8 @@ read -p "$(echo -e "$PREFIX Cloudflare email: ")" CFEMAIL
 read -p "$(echo -e "$PREFIX Cloudflare API token: ")" CFTOKEN
 read -p "$(echo -e "$PREFIX Your domain (e.g., example.com): ")" DOMAIN
 
-# --- Cloudflare Validation ---
-CF_ZONE=$(echo "$DOMAIN" | awk -F. '{print $(NF-1)"."$NF}')
+# --- Cloudflare Zone Detection ---
+CF_ZONE="$DOMAIN"
 CF_ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$CF_ZONE" \
   -H "Authorization: Bearer $CFTOKEN" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
@@ -75,10 +75,16 @@ fi
 TEST_SUB="dockflareez-test-$(shuf -i 1000-9999 -n 1)"
 VPS_IP=$(curl -s ifconfig.me)
 
-curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
+RECORD_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
   -H "Authorization: Bearer $CFTOKEN" \
   -H "Content-Type: application/json" \
-  --data "{\"type\":\"A\",\"name\":\"$TEST_SUB.$CF_ZONE\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}" > /dev/null
+  --data "{\"type\":\"A\",\"name\":\"$TEST_SUB.$CF_ZONE\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}")
+
+if ! echo "$RECORD_RESPONSE" | jq -e '.success' | grep true >/dev/null; then
+  echo -e "$PREFIX ❌ Failed to create DNS record:"
+  echo "$RECORD_RESPONSE" | jq .
+  exit 1
+fi
 
 echo -e "$PREFIX 🕵️ Created test DNS record: $TEST_SUB.$CF_ZONE"
 echo -e "$PREFIX ⏳ Waiting for DNS to resolve..."
@@ -97,9 +103,10 @@ if [ "$DNS_OK" != true ]; then
   exit 1
 fi
 
-# Clean up test record
+# --- Clean up test DNS record ---
 RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$TEST_SUB.$CF_ZONE" \
-  -H "Authorization: Bearer $CFTOKEN" | jq -r '.result[0].id')
+  -H "Authorization: Bearer $CFTOKEN" \
+  -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" ]]; then
   curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
