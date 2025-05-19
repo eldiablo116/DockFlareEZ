@@ -101,5 +101,15 @@ done
 
 # --- Download & Execute App Installer ---
 APP_SCRIPT_URL="$GITHUB_REPO/$APP_ID.sh"
-echo -e "$PREFIX ⬇️ Downloading and executing ${APP_NAME} installer..."
-curl -fsSL "$APP_SCRIPT_URL" | bash
+APP_SCRIPT_TMP="/tmp/${APP_ID}.sh"
+
+echo -e "$PREFIX ⬇️ Downloading latest $APP_NAME installer..."
+curl -fsSL "$APP_SCRIPT_URL" -o "$APP_SCRIPT_TMP"
+
+if [ $? -ne 0 ]; then
+  echo -e "$PREFIX ❌ Failed to download $APP_SCRIPT_URL"
+  exit 1
+fi
+
+chmod +x "$APP_SCRIPT_TMP"
+"$APP_SCRIPT_TMP"
