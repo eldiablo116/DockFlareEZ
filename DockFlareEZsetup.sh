@@ -206,6 +206,7 @@ done
 SSHPORT=$(shuf -i 2000-65000 -n 1)
 USERPASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 
+# --- New User Setup ---
 adduser --disabled-password --gecos "" "$NEWUSER" > /dev/null
 usermod -aG sudo "$NEWUSER"
 echo "$NEWUSER:$USERPASS" | chpasswd
@@ -218,6 +219,25 @@ systemctl restart ssh || systemctl restart ssh.service
 USER_OK=true
 echo -e "$PREFIX 👤 User '$NEWUSER' created with password login."
 echo -e "$PREFIX 🔐 SSH set to port $SSHPORT"
+
+# --- Disable sudo password prompt ---
+echo "$NEWUSER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEWUSER
+chmod 440 /etc/sudoers.d/$NEWUSER
+echo -e "$PREFIX 🔓 Sudo access granted without password for $NEWUSER"
+
+# --- Add sudo safety check to .bashrc ---
+{
+  echo ""
+  echo "# DockFlareEZ sudo access test"
+  echo "echo -e \"$PREFIX ⏳ Verifying sudo access...\""
+  echo "if sudo -n true 2>/dev/null; then"
+  echo "  echo -e \"$PREFIX ✅ Sudo test passed.\""
+  echo "else"
+  echo "  echo -e \"$PREFIX ❌ Sudo not working without password — check sudoers config.\""
+  echo "fi"
+} >> /home/$NEWUSER/.bashrc
+
+chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
 
 # --- Docker Install ---
 echo -e "$PREFIX 🐳 Installing Docker..."
