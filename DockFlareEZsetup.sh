@@ -327,6 +327,14 @@ EOF
 chmod +x /opt/dns-helper.sh
 echo -e "$PREFIX ✅ DNS helper ready: /opt/dns-helper.sh"
 
+# --- Install DockFlareEZ App Launcher ---
+echo -e "$PREFIX 🛠️ Installing dfapps interactive launcher..."
+
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfaspps.sh -o /usr/local/bin/dfapps
+chmod +x /usr/local/bin/dfapps
+
+echo -e "$PREFIX ✅ You can now run 'dfapps' from any directory."
+
 # --- Deploy Traefik ---
 mkdir -p /opt/traefik
 touch /opt/traefik/acme.json
