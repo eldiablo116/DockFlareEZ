@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.4"
+VERSION="v1.5"
 
 # --- Colors ---
 BLUE='\e[34m'
@@ -13,7 +13,23 @@ PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
 # --- Sudo Check ---
 if [ "$EUID" -ne 0 ]; then
-  echo -e "$PREFIX ⚠️  Please run this tool using: ${ORANGE}sudo dfapps${RESET}"
+  echo -e "$PREFIX ⚠️  Please run this tool using: ${ORANGE}sudo -E dfapps${RESET}"
+  exit 1
+fi
+
+if [ -z "$SUDO_USER" ]; then
+  echo -e "$PREFIX ❌ Cannot determine the original user. Please use: ${ORANGE}sudo -E dfapps${RESET}"
+  exit 1
+fi
+
+# Try to source original user’s environment (Cloudflare vars) from their bashrc
+source "/home/$SUDO_USER/.bashrc"
+
+# Verify that Cloudflare vars are now set
+if [[ -z "$CLOUDFLARE_EMAIL" || -z "$CLOUDFLARE_API_KEY" || -z "$CF_ZONE" ]]; then
+  echo -e "$PREFIX ❌ Cloudflare environment variables not found."
+  echo -e "$PREFIX Please make sure you've run ${ORANGE}dfconfig${RESET} as your normal user to save them first."
+  echo -e "$PREFIX Then rerun this tool using: ${ORANGE}sudo -E dfapps${RESET}"
   exit 1
 fi
 
