@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.1"
+VERSION="v1.2"
 
 # --- App Info ---
 APP_NAME="Uptime Kuma"
@@ -73,12 +73,28 @@ EOF
 
 # --- Deploy ---
 cd "$APP_DIR"
+echo -e "$PREFIX 🚀 Deploying $APP_NAME..."
 docker compose up -d
 
-# --- DNS Registration ---
-export CLOUDFLARE_EMAIL
-export CLOUDFLARE_API_KEY
-/opt/dns-helper.sh "$SUBDOMAIN" "$CF_ZONE" "$VPS_IP"
+# --- Wait for container to come up ---
+echo -e "$PREFIX ⏳ Waiting for '$APP_ID' container to start..."
+sleep 5
+
+if ! docker ps --format '{{.Names}}' | grep -q "$APP_ID"; then
+  echo -e "$PREFIX ❌ Container '$APP_ID' failed to start. Please check logs."
+  exit 1
+fi
+
+# --- Validate VPS IP ---
+VPS_IP=$(curl -4 -s https://icanhazip.com | tr -d '\n')
+if [[ ! "$VPS_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo -e "$PREFIX ❌ VPS IP is invalid. Skipping DNS registration."
+else
+  export CLOUDFLARE_EMAIL
+  export CLOUDFLARE_API_KEY
+  /opt/dns-helper.sh "$SUBDOMAIN" "$CF_ZONE" "$VPS_IP"
+fi
 
 # --- Result ---
 echo -e "$PREFIX ✅ $APP_NAME deployed at https://$SUBDOMAIN.$CF_ZONE"
+
