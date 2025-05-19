@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/assets/logo_transparent.png" alt="DockFlareEZsetup Logo" width="200" />
+  <img src="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/assets/logo_transparent.png" alt="DockFlareEZ Logo" width="200" />
 </p>
 
 <h1 align="center">🚀 DockFlareEZsetup</h1>
-<p align="center">One-line VPS bootstrapper for Docker + Traefik + Cloudflare DNS + Portainer</p>
+<p align="center">Your zero-hassle VPS bootstrapper for Docker, Traefik, Portainer & Cloudflare DNS automation.</p>
 
 ---
 
 ## ✅ One-Line Install
 
-SSH into your fresh Ubuntu VPS as **root**, then run:
+SSH into your **fresh Ubuntu VPS** as `root` and run:
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/DockFlareEZsetup.sh)
@@ -17,116 +17,156 @@ bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/D
 
 ---
 
-## 🔧 What You'll Need Before You Begin
+## 🧩 What You'll Need
 
-1. **A Cloudflare account** managing your domain  
-   → <a href="https://dash.cloudflare.com" target="_blank">https://dash.cloudflare.com</a>
+1. **Cloudflare Account** managing your domain  
+   → https://dash.cloudflare.com
 
-2. **Your Cloudflare Global API Key**
-   - Found at: <a href="https://dash.cloudflare.com/profile" target="_blank">Cloudflare Profile</a>
-   - Not a token — use the Global API Key
+2. **Cloudflare Global API Key** (not token)
+   - Find it under: https://dash.cloudflare.com/profile/api-tokens
 
----
-
-## 🛠️ What This Script Does
-
-- Verifies your Cloudflare credentials
-- Creates a test subdomain and confirms DNS propagation
-- Creates a new sudo-enabled user with a random secure password
-- Randomly selects a secure SSH port and enables password login
-- Installs Docker and the Docker Compose plugin
-- Deploys **Traefik** with:
-  - Cloudflare DNS-01 SSL certificate automation
-  - Auto HTTPS via Let's Encrypt
-- Deploys **Portainer** at a randomized subdomain like `https://portainer-5732.yourdomain.com`
-- Creates:
-  - `/opt/traefik/` → Traefik config + certs
-  - `/opt/portainer/` → Portainer container config
-  - `/opt/dns-helper.sh` → Script to create DNS records for any subdomain
-  - `dockflare` Docker network (shared by future containers)
-- Adds the `dcud` command (Docker Compose Up + DNS):
-  - Automatically creates Cloudflare DNS records when deploying any service that uses a `Host("...")` Traefik rule
+3. **A Domain** pointing to your VPS IP (e.g. `example.com`)  
+   - Add an `A` record at Cloudflare for your domain/subdomain  
+   - Orange cloud proxy **ON** is supported
 
 ---
 
-## 🔁 After Installation
+## 🛠️ What It Installs
 
-You’ll see your generated SSH port and user credentials at the end:
+| Component     | Description |
+|---------------|-------------|
+| 🔐 Random SSH Port | Disables default port 22, strong password auth only |
+| 👤 New Admin User | Sudo-enabled, with no-password sudo |
+| 🐳 Docker & Compose | Latest stable versions |
+| 🌐 Traefik | With Let's Encrypt SSL via Cloudflare DNS-01 |
+| 📦 Portainer | Accessible securely via Traefik |
+| 🌍 DNS Helper | Auto-creates DNS records for deployed apps |
+| 🧭 MOTD Branding | Shows domain, public IP & `df` command list |
+
+---
+
+## 💻 Included CLI Tools
+
+All tools install to `/usr/local/bin/` and work globally.
+
+### 🧰 `dfapps`
+> Interactive menu to deploy prebuilt Docker apps.
 
 ```bash
-ssh -p YOURPORT youruser@your-server-ip
+dfapps
 ```
 
-Then visit your Portainer instance at a URL like:
+- Prompts you to select an app
+- Auto-generates subdomain (e.g. `uptime-kuma-2374.yourdomain.com`)
+- Pulls template from GitHub
+- Deploys app via Docker Compose
+- Auto-creates Cloudflare DNS record
 
-```
-https://portainer-4382.yourdomain.com
-```
-
-> The exact subdomain is randomly generated to avoid Let's Encrypt rate limits.
-
----
-
-## 🌐 Deploying New Services with Auto-DNS
-
-Use the `dcud` command to deploy any new Docker Compose app and automatically generate a matching Cloudflare DNS record:
+### 🧾 `dfconfig`
+> View and edit stored Cloudflare credentials.
 
 ```bash
-cd /opt/my-new-app
-dcud
+dfconfig
 ```
 
-> `dcud` looks for a `Host("sub.domain")` rule inside `docker-compose.yml`, then creates the matching A record in Cloudflare pointing to your VPS.
+- Shows current values (with masked API key)
+- Prompts to update them if needed
+- Updates your `.bashrc` environment for future sessions
 
----
-
-## 🐳 Example: Add a New Container
-
-```yaml
-services:
-  myapp:
-    image: yourimage
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.myapp.rule=Host(\"app.yourdomain.com\")"
-      - "traefik.http.routers.myapp.entrypoints=websecure"
-      - "traefik.http.routers.myapp.tls.certresolver=cloudflare"
-    networks:
-      - dockflare
-
-networks:
-  dockflare:
-    external: true
-```
-
-Place your app folder anywhere (e.g. `/opt/containers/myapp`) and run:
+### 🚀 `dfdeploy`
+> Deploy any `docker-compose.yml` in your current directory and auto-create DNS.
 
 ```bash
 cd /opt/containers/myapp
-dcud
+dfdeploy
+```
+
+- Looks for `Host("sub.domain.com")` rule
+- Detects subdomain + domain from Compose file
+- Creates matching DNS A record via Cloudflare
+
+### 🔄 `dfupdate`
+> Update all DockFlareEZ CLI tools.
+
+```bash
+dfupdate
+```
+
+- Checks for latest versions of:
+  - `dfapps`
+  - `dfdeploy`
+  - `dfconfig`
+  - `dfupdate` itself
+- Compares local version
+- Prompts to upgrade individually
+
+---
+
+## 📦 App Template Format
+
+Each app is stored in GitHub as a standalone `.sh` installer in `/dfapps`.
+
+To build your own:
+- Use subdomain placeholder `{{SUBDOMAIN}}`
+- Use domain placeholder `{{DOMAIN}}`
+- Optional envs: `{{ADMIN_USER}}`, `{{ADMIN_PASS}}`
+
+Example (inside your template):
+
+```yaml
+traefik.http.routers.myapp.rule: 'Host("{{SUBDOMAIN}}.{{DOMAIN}}")'
 ```
 
 ---
 
-## 🔒 Security Notes
+## 🔐 Security Features
 
-- SSH is locked to a random high port
-- Only password login is enabled by default (no key requirement)
-- Cloudflare proxy + Let's Encrypt SSL via DNS challenge
-- All public endpoints are HTTPS-secured behind Traefik
+- SSH locked to random port
+- Root login remains enabled (for recovery)
+- No sudo password prompt for the created user
+- Docker group access granted to admin user
+- DNS validation test ensures propagation works before SSL issuance
 
 ---
 
-## 💡 Built For
+## 📣 MOTD Branding
 
-- Anyone tired of repeating container + DNS setup manually
+After setup, your server will show this on login:
+
+```
+🧭  Powered by DockFlareEZ
+
+🌐 Domain: yourdomain.com
+📡 Public IP: 1.2.3.4
+
+💡 Commands:
+  👉  dfapps     - Launch interactive app installer
+  👉  dfconfig   - View or update Cloudflare DNS settings
+  👉  dfdeploy   - Deploy + auto-DNS any docker-compose app
+  👉  dfupdate   - Update all DockFlareEZ utilities
+
+Happy deploying! 🚀
+```
+
+---
+
+## ♻️ Uninstall
+
+To fully remove all components (Docker, Portainer, Traefik, DNS helpers):
+
+```bash
+dfuninstall
+```
+
+> ⚠️ This will reset your SSH port to 22 and wipe all installed services (except the user account).
 
 ---
 
 ## 🤝 Contributing
 
-Suggestions and PRs welcome! Want to add app templates, compose helpers, or upstream tool integrations? Go for it.
+PRs welcome at https://github.com/eldiablo116/DockFlareEZ-  
+Ideas? Drop them as GitHub Issues.
 
 ---
 
-©️ 2025 – eldiablo116 – Built for fast, secure, repeatable VPS launches.
+©️ 2025 – eldiablo116 – DockFlareEZ is free and open source.
