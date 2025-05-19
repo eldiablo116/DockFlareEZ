@@ -525,6 +525,20 @@ EOF
 chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
 echo -e "$PREFIX ✅ 'dcud' command installed for $NEWUSER"
 
+# --- Persist Cloudflare variables for new user ---
+echo -e "$PREFIX 💾 Saving Cloudflare environment variables to ~/.bashrc for $NEWUSER..."
+
+{
+  echo ""
+  echo "# DockFlareEZ Cloudflare credentials"
+  echo "export CLOUDFLARE_EMAIL=\"$CFEMAIL\""
+  echo "export CLOUDFLARE_API_KEY=\"$CFAPIKEY\""
+  echo "export CF_ZONE=\"$DOMAIN\""
+} >> /home/$NEWUSER/.bashrc
+
+chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
+echo -e "$PREFIX ✅ Cloudflare variables persisted to /home/$NEWUSER/.bashrc"
+
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
 echo -e "$PREFIX System update:        $([ "$UPDATE_OK" = true ] && echo ✅ || echo ❌)"
