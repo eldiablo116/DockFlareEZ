@@ -548,6 +548,30 @@ chmod +x /usr/local/bin/dfupdate
 
 echo -e "$PREFIX ✅ You can now run 'dfupdate' to update all DockFlareEZ tools."
 
+# --- Set MOTD ---
+if [ -f /etc/motd ]; then
+  cp /etc/motd /etc/motd.bak
+  echo -e "$PREFIX 🧾 Existing MOTD backed up to /etc/motd.bak"
+fi
+
+cat <<EOF > /etc/motd
+
+🧭  Powered by DockFlareEZ v7.1
+
+🌐 Domain: $CF_ZONE
+📡 Public IP: $VPS_IP
+
+💡 Commands:
+
+  👉  dfapps     - Launch interactive app installer
+  👉  dfconfig   - View or update Cloudflare DNS settings
+  👉  dfdeploy   - Deploy + auto-DNS any docker-compose app
+  👉  dfupdate   - Update all DockFlareEZ utilities
+
+Happy deploying! 🚀
+
+EOF
+
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
 echo -e "$PREFIX System update:        $([ "$UPDATE_OK" = true ] && echo ✅ || echo ❌)"
@@ -559,9 +583,13 @@ echo -e "$PREFIX Docker installed:     $([ "$DOCKER_OK" = true ] && echo ✅ || 
 echo -e "$PREFIX Traefik running:      $([ "$TRAEFIK_OK" = true ] && echo ✅ || echo ❌)"
 echo -e "$PREFIX Portainer running:    $([ "$PORTAINER_OK" = true ] && echo ✅ || echo ❌)"
 echo -e "$PREFIX DNS helper script:    $([ -f /opt/dns-helper.sh ] && echo ✅ /opt/dns-helper.sh || echo ❌)"
-echo -e "$PREFIX dfapps launcher:      $([ -f /usr/local/bin/dfapps ] && echo ✅ /usr/local/bin/dfapps || echo ❌)"
-echo -e "$PREFIX dcud command:         ✅ Available via ~/.bashrc for user '$NEWUSER'"
-echo -e "$PREFIX dfconfig tool:        $([ -f /usr/local/bin/dfconfig ] && echo ✅ /usr/local/bin/dfconfig || echo ❌)"
+
+echo -e "\n${ORANGE}========== DockFlareEZ Tools ==========${RESET}"
+echo -e "$PREFIX dfapps:               $([ -f /usr/local/bin/dfapps ] && echo ✅ /usr/local/bin/dfapps || echo ❌)"
+echo -e "$PREFIX dfdeploy:             $([ -f /usr/local/bin/dfdeploy ] && echo ✅ /usr/local/bin/dfdeploy || echo ❌)"
+echo -e "$PREFIX dfconfig:             $([ -f /usr/local/bin/dfconfig ] && echo ✅ /usr/local/bin/dfconfig || echo ❌)"
+echo -e "$PREFIX dfupdate:             $([ -f /usr/local/bin/dfupdate ] && echo ✅ /usr/local/bin/dfupdate || echo ❌)"
+echo -e "$PREFIX MOTD updated:         $([ -f /etc/motd ] && grep -q 'DockFlareEZ' /etc/motd && echo ✅ /etc/motd || echo ❌)"
 
 echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@$VPS_IP${RESET}"
 echo -e "${GREEN}Temporary password: $USERPASS${RESET}"
