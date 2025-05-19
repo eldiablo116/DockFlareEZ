@@ -1,19 +1,28 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.2"
+VERSION="v1.3"
 
 # --- Colors ---
 BLUE='\e[34m'
 ORANGE='\e[38;5;208m'
 GREEN='\e[32m'
+RED='\e[31m'
 RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
-# --- Permission Check ---
-if [[ $EUID -ne 0 ]]; then
-  echo -e "$PREFIX ⚠️  Please run this tool using: sudo dfapps"
+# --- Sudo Check ---
+if [ "$EUID" -ne 0 ]; then
+  echo -e "$PREFIX ⚠️  Please run this tool using: ${ORANGE}sudo dfapps${RESET}"
   exit 1
+fi
+
+# --- Load original user environment if run via sudo ---
+if [ -n "$SUDO_USER" ]; then
+  USER_BASHRC="/home/$SUDO_USER/.bashrc"
+  if [ -f "$USER_BASHRC" ]; then
+    source "$USER_BASHRC"
+  fi
 fi
 
 # --- App Catalog ---
@@ -31,13 +40,19 @@ fi
 # --- Prompt for CF credentials (check existing first) ---
 echo -e "$PREFIX 🌐 Checking Cloudflare environment variables..."
 
-EMAIL_STATUS="${CLOUDFLARE_EMAIL:+✅}"
-API_STATUS="${CLOUDFLARE_API_KEY:+✅}"
-ZONE_STATUS="${CF_ZONE:+✅}"
+check_var() {
+  local name=$1
+  local value=${!name}
+  if [ -n "$value" ]; then
+    echo -e "$PREFIX $name: ${GREEN}✅${RESET}"
+  else
+    echo -e "$PREFIX $name: ${RED}❌${RESET}"
+  fi
+}
 
-echo -e "$PREFIX CLOUDFLARE_EMAIL: ${EMAIL_STATUS:-❌}"
-echo -e "$PREFIX CLOUDFLARE_API_KEY: ${API_STATUS:-❌}"
-echo -e "$PREFIX CF_ZONE (domain): ${ZONE_STATUS:-❌}"
+check_var CLOUDFLARE_EMAIL
+check_var CLOUDFLARE_API_KEY
+check_var CF_ZONE
 
 read -p "$PREFIX Are these correct? (y/n): " CONFIRM_ENV
 
@@ -59,17 +74,15 @@ select opt in "${!APPS[@]}" "Exit"; do
     exit 0
   elif [[ -n "${APPS[$opt]}" ]]; then
     APP_NAME="$opt"
+    APP_ID="$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
+    echo -e "$PREFIX 📦 ${APPS[$opt]}"
     break
   else
     echo -e "$PREFIX ❌ Invalid option"
   fi
 done
 
-# --- Fetch and Execute App Installer ---
-APP_ID="$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-echo -e "$PREFIX 📦 ${APPS[$APP_NAME]}"
-echo -e "$PREFIX ⬇️ Downloading and executing $APP_NAME installer..."
-
-curl -fsSL "$GITHUB_REPO/${APP_ID}.sh" -o "/tmp/${APP_ID}.sh"
-chmod +x "/tmp/${APP_ID}.sh"
-"/tmp/${APP_ID}.sh"
+# --- Download & Execute App Installer ---
+APP_SCRIPT_URL="$GITHUB_REPO/$APP_ID.sh"
+echo -e "$PREFIX ⬇️ Downloading and executing ${APP_NAME} installer..."
+curl -fsSL "$APP_SCRIPT_URL" | bash
