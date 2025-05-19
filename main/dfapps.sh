@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.1"
+VERSION="v1.2"
 
 # --- Colors ---
 BLUE='\e[34m'
@@ -9,6 +9,12 @@ ORANGE='\e[38;5;208m'
 GREEN='\e[32m'
 RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
+
+# --- Permission Check ---
+if [[ $EUID -ne 0 ]]; then
+  echo -e "$PREFIX ⚠️  Please run this tool using: sudo dfapps"
+  exit 1
+fi
 
 # --- App Catalog ---
 declare -A APPS
@@ -25,9 +31,13 @@ fi
 # --- Prompt for CF credentials (check existing first) ---
 echo -e "$PREFIX 🌐 Checking Cloudflare environment variables..."
 
-echo -e "$PREFIX CLOUDFLARE_EMAIL: ${CLOUDFLARE_EMAIL:-❌ Not set}"
-echo -e "$PREFIX CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY:+✅ Set}${CLOUDFLARE_API_KEY:-❌ Not set}"
-echo -e "$PREFIX CF_ZONE (domain): ${CF_ZONE:-❌ Not set}"
+EMAIL_STATUS="${CLOUDFLARE_EMAIL:+✅}"
+API_STATUS="${CLOUDFLARE_API_KEY:+✅}"
+ZONE_STATUS="${CF_ZONE:+✅}"
+
+echo -e "$PREFIX CLOUDFLARE_EMAIL: ${EMAIL_STATUS:-❌}"
+echo -e "$PREFIX CLOUDFLARE_API_KEY: ${API_STATUS:-❌}"
+echo -e "$PREFIX CF_ZONE (domain): ${ZONE_STATUS:-❌}"
 
 read -p "$PREFIX Are these correct? (y/n): " CONFIRM_ENV
 
@@ -49,23 +59,17 @@ select opt in "${!APPS[@]}" "Exit"; do
     exit 0
   elif [[ -n "${APPS[$opt]}" ]]; then
     APP_NAME="$opt"
-    APP_ID="$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-    echo -e "$PREFIX 📦 ${APPS[$opt]}"
     break
   else
     echo -e "$PREFIX ❌ Invalid option"
   fi
 done
 
-# --- Run Installer Script ---
-SCRIPT_URL="$GITHUB_REPO/$APP_ID.sh"
+# --- Fetch and Execute App Installer ---
+APP_ID="$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
+echo -e "$PREFIX 📦 ${APPS[$APP_NAME]}"
 echo -e "$PREFIX ⬇️ Downloading and executing $APP_NAME installer..."
-curl -fsSL "$SCRIPT_URL" -o "/tmp/$APP_ID.sh"
 
-if [ $? -ne 0 ]; then
-  echo -e "$PREFIX ❌ Failed to download installer script for $APP_NAME"
-  exit 1
-fi
-
-chmod +x "/tmp/$APP_ID.sh"
-CLOUDFLARE_EMAIL="$CLOUDFLARE_EMAIL" CLOUDFLARE_API_KEY="$CLOUDFLARE_API_KEY" CF_ZONE="$CF_ZONE" VPS_IP="$VPS_IP" "/tmp/$APP_ID.sh"
+curl -fsSL "$GITHUB_REPO/${APP_ID}.sh" -o "/tmp/${APP_ID}.sh"
+chmod +x "/tmp/${APP_ID}.sh"
+"/tmp/${APP_ID}.sh"
