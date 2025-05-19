@@ -46,7 +46,7 @@ fi
 declare -A APPS
 APPS["Uptime Kuma"]="Self-hosted monitoring & alerts"
 
-GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/dfapps"
+GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/dfapps"
 
 # --- Check Requirements ---
 if ! command -v docker &>/dev/null; then
