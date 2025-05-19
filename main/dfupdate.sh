@@ -12,10 +12,10 @@ PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
 # --- URLs ---
 declare -A COMPONENTS
-COMPONENTS["dfapps"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfapps.sh"
-COMPONENTS["dfdeploy"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfdeploy.sh"
-COMPONENTS["dfconfig"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfconfig.sh"
-COMPONENTS["dfupdate"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfupdate.sh"
+COMPONENTS["dfapps"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfapps.sh"
+COMPONENTS["dfdeploy"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfdeploy.sh"
+COMPONENTS["dfconfig"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfconfig.sh"
+COMPONENTS["dfupdate"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfupdate.sh"
 
 echo -e "$PREFIX 🔄 Updating DockFlareEZ tools..."
 
