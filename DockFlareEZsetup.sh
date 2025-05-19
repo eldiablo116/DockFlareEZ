@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v3.6\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.0\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
@@ -21,7 +21,7 @@ PORTAINER_OK=false
 
 # --- Update Check First ---
 echo -e "$PREFIX 🔍 Checking for system updates..."
-apt update -qq > /dev/null
+DEBIAN_FRONTEND=noninteractive apt update -qq > /dev/null 2>&1
 UPGRADABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
 
 if [ "$UPGRADABLE" -gt 0 ]; then
@@ -29,7 +29,7 @@ if [ "$UPGRADABLE" -gt 0 ]; then
   read -p "$(echo -e "$PREFIX Install updates now? (y/n): ")" DOUPGRADE
   if [[ "$DOUPGRADE" =~ ^[Yy]$ ]]; then
     echo -e "$PREFIX ⬇️ Installing updates..."
-    UPGRADE_OUTPUT=$(apt upgrade -y -qq)
+    UPGRADE_OUTPUT=$(DEBIAN_FRONTEND=noninteractive apt upgrade -y -qq 2>/dev/null)
     if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
       echo -e "$PREFIX ✅ No updates applied (phased)."
     else
@@ -44,7 +44,7 @@ if [ "$UPGRADABLE" -gt 0 ]; then
       fi
     fi
   else
-    echo -e "$PREFIX ✅ System is up to date."
+    echo -e "$PREFIX ✅ Skipped installing updates."
   fi
 else
   echo -e "$PREFIX ✅ System is up to date."
@@ -145,18 +145,26 @@ echo -e "$PREFIX 🔐 SSH set to port $SSHPORT"
 
 # --- Docker Install ---
 echo -e "$PREFIX 🐳 Installing Docker..."
-apt install -y -qq ca-certificates curl gnupg lsb-release > /dev/null
+
+DEBIAN_FRONTEND=noninteractive apt install -y -qq ca-certificates curl gnupg lsb-release > /dev/null 2>&1
 mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor \
-  -o /etc/apt/keyrings/docker.gpg
+
+# Only write GPG key if it doesn't already exist
+if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor \
+    -o /etc/apt/keyrings/docker.gpg
+fi
+
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
   https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
   > /etc/apt/sources.list.d/docker.list
 
-apt update -qq
-apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
-systemctl enable docker > /dev/null
+DEBIAN_FRONTEND=noninteractive apt update -qq > /dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null 2>&1
+
+systemctl enable docker > /dev/null 2>&1
 usermod -aG docker "$NEWUSER"
+
 DOCKER_OK=true
 echo -e "$PREFIX ✅ Docker installed."
 
@@ -165,7 +173,6 @@ mkdir -p /opt/traefik && touch /opt/traefik/acme.json
 chmod 600 /opt/traefik/acme.json
 
 cat <<EOF > /opt/traefik/docker-compose.yml
-version: "3"
 services:
   traefik:
     image: traefik:v2.11
@@ -202,7 +209,6 @@ echo -e "$PREFIX 🚦 Traefik deployed."
 mkdir -p /opt/portainer
 
 cat <<EOF > /opt/portainer/docker-compose.yml
-version: "3"
 services:
   portainer:
     image: portainer/portainer-ce
@@ -238,5 +244,5 @@ echo -e "$PREFIX Docker installed:     $([ "$DOCKER_OK" = true ] && echo ✅ || 
 echo -e "$PREFIX Traefik running:      $([ "$TRAEFIK_OK" = true ] && echo ✅ || echo ❌)"
 echo -e "$PREFIX Portainer running:    $([ "$PORTAINER_OK" = true ] && echo ✅ || echo ❌)"
 
-echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@<your-server-ip>${RESET}"
+echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@$VPS_IP${RESET}"
 echo -e "${GREEN}Temporary password: $USERPASS${RESET}"
