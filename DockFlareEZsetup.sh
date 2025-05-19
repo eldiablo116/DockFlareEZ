@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4h\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.5\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -438,13 +438,13 @@ services:
 
       # HTTP Router
       traefik.http.routers.portainer-http.entrypoints: web
-      traefik.http.routers.portainer-http.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer-http.rule: "Host(\"portainer.${CF_ZONE}\")"
       traefik.http.routers.portainer-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.portainer-http.service: portainer
 
       # HTTPS Router
       traefik.http.routers.portainer.entrypoints: websecure
-      traefik.http.routers.portainer.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer.rule: "Host(\"portainer.${CF_ZONE}\")"
       traefik.http.routers.portainer.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.portainer.tls.certresolver: cloudflare
       traefik.http.routers.portainer.tls.options: securetls@file
