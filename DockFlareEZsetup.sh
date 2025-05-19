@@ -510,41 +510,6 @@ else
   echo -e "$PREFIX ⚠️ Skipping DNS record creation for Portainer."
 fi
 
-# --- Install global dcud (Docker Compose Up + DNS) helper ---
-echo -e "$PREFIX 🧩 Installing 'dcud' command for auto-DNS..."
-
-cat <<'EOF' >> /home/$NEWUSER/.bashrc
-
-# DockFlareEZ: docker compose up -d + Cloudflare DNS helper
-dcud() {
-  docker compose up -d "$@"
-
-  if [ -f docker-compose.yml ]; then
-    HOST_LINE=$(grep -oE 'Host\("([a-zA-Z0-9.-]+)"\)' docker-compose.yml | head -n 1)
-    if [ -n "$HOST_LINE" ]; then
-      FQDN=$(echo "$HOST_LINE" | cut -d'"' -f2)
-      SUBDOMAIN="${FQDN%%.*}"
-      DOMAIN="${FQDN#*.}"
-      IP=$(curl -s https://icanhazip.com)
-
-      echo "[DockFlareEZ] 🛰️  Detected domain: $FQDN"
-      echo "[DockFlareEZ] 🔧 Running DNS update for $SUBDOMAIN.$DOMAIN → $IP"
-
-      export CLOUDFLARE_EMAIL="$CLOUDFLARE_EMAIL"
-      export CLOUDFLARE_API_KEY="$CLOUDFLARE_API_KEY"
-      /opt/dns-helper.sh "$SUBDOMAIN" "$DOMAIN" "$IP"
-    else
-      echo "[DockFlareEZ] ⚠️  No Host(\"...\") rule found in docker-compose.yml"
-    fi
-  else
-    echo "[DockFlareEZ] ❌ No docker-compose.yml in this directory."
-  fi
-}
-EOF
-
-chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
-echo -e "$PREFIX ✅ 'dcud' command installed for $NEWUSER"
-
 # --- Persist Cloudflare variables for new user ---
 echo -e "$PREFIX 💾 Saving Cloudflare environment variables to ~/.bashrc for $NEWUSER..."
 
@@ -559,6 +524,14 @@ echo -e "$PREFIX 💾 Saving Cloudflare environment variables to ~/.bashrc for $
 chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
 echo -e "$PREFIX ✅ Cloudflare variables persisted to /home/$NEWUSER/.bashrc"
 
+# --- Install dfdeploy (Docker Compose + DNS automation) ---
+echo -e "$PREFIX 🛠️ Installing dfdeploy utility..."
+
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfdeploy.sh -o /usr/local/bin/dfdeploy
+chmod +x /usr/local/bin/dfdeploy
+
+echo -e "$PREFIX ✅ You can now run 'dfdeploy' from any directory to deploy and auto-DNS docker-compose apps."
+
 # --- Install dfconfig (Cloudflare config editor) ---
 echo -e "$PREFIX 🛠️ Installing dfconfig utility..."
 
@@ -566,6 +539,14 @@ curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/
 chmod +x /usr/local/bin/dfconfig
 
 echo -e "$PREFIX ✅ You can now run 'dfconfig' to edit your Cloudflare credentials."
+
+# --- Install dfupdate ---
+echo -e "$PREFIX 🛠️ Installing dfupdate utility..."
+
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfupdate.sh -o /usr/local/bin/dfupdate
+chmod +x /usr/local/bin/dfupdate
+
+echo -e "$PREFIX ✅ You can now run 'dfupdate' to update all DockFlareEZ tools."
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
