@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v3.4\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v3.5\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
