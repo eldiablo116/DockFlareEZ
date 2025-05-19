@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.5\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.6\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -424,8 +424,11 @@ docker network create dockflare > /dev/null 2>&1 || true
 cd /opt/traefik && docker compose up -d && TRAEFIK_OK=true
 echo -e "$PREFIX 🚦 Traefik deployed."
 
-# --- Deploy Portainer ---
+# --- Deploy Portainer with Random Subdomain ---
 mkdir -p /opt/portainer
+
+# Generate a random subdomain like portainer-4382
+PORTAINER_SUB="portainer-$(shuf -i 1000-9999 -n 1)"
 
 cat <<EOF > /opt/portainer/docker-compose.yml
 services:
@@ -438,13 +441,13 @@ services:
 
       # HTTP Router
       traefik.http.routers.portainer-http.entrypoints: web
-      traefik.http.routers.portainer-http.rule: "Host(\"portainer.${CF_ZONE}\")"
+      traefik.http.routers.portainer-http.rule: "Host(\\\"${PORTAINER_SUB}.${CF_ZONE}\\\")"
       traefik.http.routers.portainer-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.portainer-http.service: portainer
 
       # HTTPS Router
       traefik.http.routers.portainer.entrypoints: websecure
-      traefik.http.routers.portainer.rule: "Host(\"portainer.${CF_ZONE}\")"
+      traefik.http.routers.portainer.rule: "Host(\\\"${PORTAINER_SUB}.${CF_ZONE}\\\")"
       traefik.http.routers.portainer.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@file
       traefik.http.routers.portainer.tls.certresolver: cloudflare
       traefik.http.routers.portainer.tls.options: securetls@file
@@ -468,16 +471,17 @@ networks:
 EOF
 
 cd /opt/portainer && docker compose up -d && PORTAINER_OK=true
-echo -e "$PREFIX 🧭 Portainer deployed at https://portainer.$CF_ZONE"
+echo -e "$PREFIX 🧭 Portainer deployed at https://${PORTAINER_SUB}.${CF_ZONE}"
 
-read -p "$(echo -e "$PREFIX 🌐 Create Cloudflare DNS record for Portainer? (y/n): ")" ADD_PORTAINER_DNS
+read -p "$(echo -e "$PREFIX 🌐 Create Cloudflare DNS record for ${PORTAINER_SUB}.${CF_ZONE}? (y/n): ")" ADD_PORTAINER_DNS
 if [[ "$ADD_PORTAINER_DNS" =~ ^[Yy]$ ]]; then
   export CLOUDFLARE_EMAIL="$CFEMAIL"
   export CLOUDFLARE_API_KEY="$CFAPIKEY"
-  /opt/dns-helper.sh portainer "$CF_ZONE" "$VPS_IP"
+  /opt/dns-helper.sh "$PORTAINER_SUB" "$CF_ZONE" "$VPS_IP"
 else
   echo -e "$PREFIX ⚠️ Skipping DNS record creation for Portainer."
 fi
+
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
