@@ -30,12 +30,19 @@ if ! command -v docker &>/dev/null; then
   exit 1
 fi
 
-# --- Prompt for CF credentials ---
-if [ -z "$CLOUDFLARE_EMAIL" ] || [ -z "$CLOUDFLARE_API_KEY" ] || [ -z "$CF_ZONE" ]; then
-  echo -e "$PREFIX 🌐 Let's verify your environment variables first."
-  read -p "$PREFIX Cloudflare email: " CLOUDFLARE_EMAIL
-  read -p "$PREFIX Cloudflare API Key: " CLOUDFLARE_API_KEY
-  read -p "$PREFIX Your domain (e.g. example.com): " CF_ZONE
+# --- Prompt for CF credentials (check existing first) ---
+echo -e "$PREFIX 🌐 Checking Cloudflare environment variables..."
+
+echo -e "$PREFIX CLOUDFLARE_EMAIL: ${CLOUDFLARE_EMAIL:-<not set>}"
+echo -e "$PREFIX CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY:+<set>}${CLOUDFLARE_API_KEY:-<not set>}"
+echo -e "$PREFIX CF_ZONE (domain): ${CF_ZONE:-<not set>}"
+
+read -p "$PREFIX Are these correct? (y/n): " CONFIRM_ENV
+
+if [[ ! "$CONFIRM_ENV" =~ ^[Yy]$ ]]; then
+  read -p "$PREFIX Enter Cloudflare email: " CLOUDFLARE_EMAIL
+  read -p "$PREFIX Enter Cloudflare API Key: " CLOUDFLARE_API_KEY
+  read -p "$PREFIX Enter your domain (e.g. example.com): " CF_ZONE
 fi
 
 VPS_IP=$(curl -s https://icanhazip.com)
