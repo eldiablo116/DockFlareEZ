@@ -556,7 +556,7 @@ fi
 
 cat <<EOF > /etc/motd
 
-🧭  Powered by DockFlareEZ v7.1
+🧭  Powered by DockFlareEZ
 
 🌐 Domain: $CF_ZONE
 📡 Public IP: $VPS_IP
