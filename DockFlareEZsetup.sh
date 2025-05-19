@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4a\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4b\n===============================${RESET}\n"
 
 # --- Preflight Check: Existing Containers (only if Docker exists) ---
 EXISTING_CONTAINERS=()
@@ -228,6 +228,81 @@ usermod -aG docker "$NEWUSER"
 DOCKER_OK=true
 echo -e "$PREFIX ✅ Docker installed."
 
+# --- Create DNS Helper Script ---
+echo -e "$PREFIX 🛠️ Creating DNS helper script..."
+
+cat <<'EOF' > /opt/dns-helper.sh
+#!/bin/bash
+
+# --- Usage ---
+# ./dns-helper.sh <subdomain> <domain> <ip>
+# Requires CLOUDFLARE_EMAIL and CLOUDFLARE_API_KEY to be exported
+
+if [ "$#" -ne 3 ]; then
+  echo "[dns-helper] ❌ Usage: \$0 <subdomain> <domain> <ip>"
+  exit 1
+fi
+
+SUBDOMAIN=\$1
+DOMAIN=\$2
+IP=\$3
+FQDN="\${SUBDOMAIN}.\${DOMAIN}"
+PROXIED=true
+
+# --- Check required env vars ---
+if [ -z "\$CLOUDFLARE_EMAIL" ] || [ -z "\$CLOUDFLARE_API_KEY" ]; then
+  echo "[dns-helper] ❌ CLOUDFLARE_EMAIL or CLOUDFLARE_API_KEY is not set."
+  exit 1
+fi
+
+# --- Get Zone ID ---
+ZONE_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=\${DOMAIN}" \\
+  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
+  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+  -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+if [ -z "\$ZONE_ID" ] || [ "\$ZONE_ID" == "null" ]; then
+  echo "[dns-helper] ❌ Failed to retrieve Zone ID for \${DOMAIN}"
+  exit 1
+fi
+
+# --- Check if DNS record already exists ---
+EXISTING_RECORD_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?name=\${FQDN}" \\
+  -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
+  -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+  -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+# --- Create or Update record with proxied true ---
+RECORD_PAYLOAD="{\"type\":\"A\",\"name\":\"\$FQDN\",\"content\":\"\$IP\",\"ttl\":120,\"proxied\":\${PROXIED}}"
+
+if [[ -n "\$EXISTING_RECORD_ID" && "\$EXISTING_RECORD_ID" != "null" ]]; then
+  RESPONSE=\$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records/\${EXISTING_RECORD_ID}" \\
+    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
+    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+    -H "Content-Type: application/json" \\
+    --data "\$RECORD_PAYLOAD")
+  ACTION="updated"
+else
+  RESPONSE=\$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records" \\
+    -H "X-Auth-Email: \$CLOUDFLARE_EMAIL" \\
+    -H "X-Auth-Key: \$CLOUDFLARE_API_KEY" \\
+    -H "Content-Type: application/json" \\
+    --data "\$RECORD_PAYLOAD")
+  ACTION="created"
+fi
+
+if echo "\$RESPONSE" | jq -e '.success' | grep -q true; then
+  echo "[dns-helper] ✅ DNS record \$ACTION: \${FQDN} → \${IP} (proxied)"
+else
+  echo "[dns-helper] ❌ Failed to create/update DNS record:"
+  echo "\$RESPONSE" | jq
+fi
+EOF
+
+chmod +x /opt/dns-helper.sh
+echo -e "$PREFIX ✅ DNS helper ready: /opt/dns-helper.sh"
+
+
 # --- Deploy Traefik ---
 mkdir -p /opt/traefik
 touch /opt/traefik/acme.json
@@ -365,6 +440,15 @@ EOF
 
 cd /opt/portainer && docker compose up -d && PORTAINER_OK=true
 echo -e "$PREFIX 🧭 Portainer deployed at https://portainer.$CF_ZONE"
+
+read -p "$(echo -e "$PREFIX 🌐 Create Cloudflare DNS record for Portainer? (y/n): ")" ADD_PORTAINER_DNS
+if [[ "$ADD_PORTAINER_DNS" =~ ^[Yy]$ ]]; then
+  export CLOUDFLARE_EMAIL="$CFEMAIL"
+  export CLOUDFLARE_API_KEY="$CFAPIKEY"
+  /opt/dns-helper.sh portainer "$CF_ZONE" "$VPS_IP"
+else
+  echo -e "$PREFIX ⚠️ Skipping DNS record creation for Portainer."
+fi
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
