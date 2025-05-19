@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4g\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4h\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -433,25 +433,31 @@ services:
     image: portainer/portainer-ce
     container_name: portainer
     restart: unless-stopped
-labels:
-  traefik.enable: true
+    labels:
+      traefik.enable: true
 
-  # HTTP Router
-  traefik.http.routers.portainer-http.entrypoints: web
-  traefik.http.routers.portainer-http.rule: Host(`portainer.${CF_ZONE}`)
-  traefik.http.routers.portainer-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@file
-  traefik.http.routers.portainer-http.service: portainer
+      # HTTP Router
+      traefik.http.routers.portainer-http.entrypoints: web
+      traefik.http.routers.portainer-http.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@file
+      traefik.http.routers.portainer-http.service: portainer
 
-  # HTTPS Router
-  traefik.http.routers.portainer.entrypoints: websecure
-  traefik.http.routers.portainer.rule: Host(`portainer.${CF_ZONE}`)
-  traefik.http.routers.portainer.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@file
-  traefik.http.routers.portainer.tls.certresolver: cloudflare
-  traefik.http.routers.portainer.tls.options: securetls@file
-  traefik.http.routers.portainer.service: portainer
+      # HTTPS Router
+      traefik.http.routers.portainer.entrypoints: websecure
+      traefik.http.routers.portainer.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@file
+      traefik.http.routers.portainer.tls.certresolver: cloudflare
+      traefik.http.routers.portainer.tls.options: securetls@file
+      traefik.http.routers.portainer.service: portainer
 
-  # Internal port
-  traefik.http.services.portainer.loadbalancer.server.port: 9000
+      # Internal port
+      traefik.http.services.portainer.loadbalancer.server.port: 9000
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - dockflare
 
 volumes:
   portainer_data:
@@ -459,6 +465,7 @@ volumes:
 networks:
   dockflare:
     external: true
+EOF
 
 cd /opt/portainer && docker compose up -d && PORTAINER_OK=true
 echo -e "$PREFIX 🧭 Portainer deployed at https://portainer.$CF_ZONE"
