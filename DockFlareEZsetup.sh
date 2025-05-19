@@ -73,7 +73,7 @@ fi
 
 # --- DNS Propagation Test ---
 TEST_SUB="dockflareez-test-$(shuf -i 1000-9999 -n 1)"
-VPS_IP=$(curl -s ifconfig.me)
+VPS_IP=$(curl -4 -s https://icanhazip.com | tr -d '\n')
 
 RECORD_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
   -H "Authorization: Bearer $CFTOKEN" \
