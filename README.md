@@ -119,10 +119,6 @@ dcud
 
 ## 💡 Built For
 
-- Dashboards (Appsmith, Portainer, Grafana)
-- Internal APIs
-- Dev/staging apps
-- Secure edge deployments
 - Anyone tired of repeating container + DNS setup manually
 
 ---
