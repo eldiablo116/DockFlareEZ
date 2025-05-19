@@ -30,22 +30,26 @@ if [ "$UPGRADABLE" -gt 0 ]; then
   if [[ "$DOUPGRADE" =~ ^[Yy]$ ]]; then
     echo -e "$PREFIX ⬇️ Installing updates..."
     UPGRADE_OUTPUT=$(apt upgrade -y -qq)
-if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
-  echo -e "$PREFIX ✅ No updates applied (phased)."
-else
-  read -p "$(echo -e "$PREFIX Reboot now to finish updates? (y/n): ")" REBOOTAFTERUPGRADE
-  if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
-    echo -e "$PREFIX 🔁 Rebooting. Please re-run this script."
-    reboot
-    exit 0
+    if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
+      echo -e "$PREFIX ✅ No updates applied (phased)."
+    else
+      read -p "$(echo -e "$PREFIX Reboot now to finish updates? (y/n): ")" REBOOTAFTERUPGRADE
+      if [[ "$REBOOTAFTERUPGRADE" =~ ^[Yy]$ ]]; then
+        echo -e "$PREFIX 🔁 Rebooting. Please re-run this script."
+        reboot
+        exit 0
+      else
+        echo -e "$PREFIX ⚠️ Please reboot manually before re-running this script."
+        exit 0
+      fi
+    fi
   else
-    echo -e "$PREFIX ⚠️ Please reboot manually before re-running this script."
-    exit 0
+    echo -e "$PREFIX ✅ System is up to date."
   fi
-fi
 else
   echo -e "$PREFIX ✅ System is up to date."
 fi
+
 UPDATE_OK=true
 
 # --- Cloudflare Input ---
