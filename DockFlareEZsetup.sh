@@ -519,7 +519,7 @@ echo -e "$PREFIX ✅ Cloudflare variables persisted to /home/$NEWUSER/.bashrc"
 # --- Install DockFlareEZ App Launcher ---
 echo -e "$PREFIX 🛠️ Installing dfapps interactive launcher..."
 
-curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfapps.sh -o /usr/local/bin/dfapps
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfapps.sh -o /usr/local/bin/dfapps
 chmod +x /usr/local/bin/dfapps
 
 echo -e "$PREFIX ✅ You can now run 'dfapps' from any directory."
@@ -527,7 +527,7 @@ echo -e "$PREFIX ✅ You can now run 'dfapps' from any directory."
 # --- Install dfdeploy (Docker Compose + DNS automation) ---
 echo -e "$PREFIX 🛠️ Installing dfdeploy utility..."
 
-curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfdeploy.sh -o /usr/local/bin/dfdeploy
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfdeploy.sh -o /usr/local/bin/dfdeploy
 chmod +x /usr/local/bin/dfdeploy
 
 echo -e "$PREFIX ✅ You can now run 'dfdeploy' from any directory to deploy and auto-DNS docker-compose apps."
@@ -535,7 +535,7 @@ echo -e "$PREFIX ✅ You can now run 'dfdeploy' from any directory to deploy and
 # --- Install dfconfig (Cloudflare config editor) ---
 echo -e "$PREFIX 🛠️ Installing dfconfig utility..."
 
-curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfconfig.sh -o /usr/local/bin/dfconfig
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfconfig.sh -o /usr/local/bin/dfconfig
 chmod +x /usr/local/bin/dfconfig
 
 echo -e "$PREFIX ✅ You can now run 'dfconfig' to edit your Cloudflare credentials."
@@ -543,7 +543,7 @@ echo -e "$PREFIX ✅ You can now run 'dfconfig' to edit your Cloudflare credenti
 # --- Install dfupdate ---
 echo -e "$PREFIX 🛠️ Installing dfupdate utility..."
 
-curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfupdate.sh -o /usr/local/bin/dfupdate
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/main/dfupdate.sh -o /usr/local/bin/dfupdate
 chmod +x /usr/local/bin/dfupdate
 
 echo -e "$PREFIX ✅ You can now run 'dfupdate' to update all DockFlareEZ tools."
