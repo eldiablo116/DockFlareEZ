@@ -7,6 +7,15 @@ GREEN='\e[32m'
 RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
+# --- Handle --update flag ---
+if [[ "$1" == "--update" ]]; then
+  echo -e "$PREFIX 🔄 Updating dfapps..."
+  curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfaspps.sh -o /usr/local/bin/dfapps
+  chmod +x /usr/local/bin/dfapps
+  echo -e "$PREFIX ✅ dfapps has been updated."
+  exit 0
+fi
+
 # --- App Catalog ---
 declare -A APPS
 APPS["Appsmith"]="Low-code dashboard builder"
