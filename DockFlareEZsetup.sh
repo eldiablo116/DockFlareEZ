@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.0\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.1\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
@@ -246,3 +246,13 @@ echo -e "$PREFIX Portainer running:    $([ "$PORTAINER_OK" = true ] && echo ✅ 
 
 echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@$VPS_IP${RESET}"
 echo -e "${GREEN}Temporary password: $USERPASS${RESET}"
+
+# --- Reboot Prompt ---
+echo -e "\n$PREFIX ⚠️  Please make sure you have copied the new SSH port and temporary password above."
+read -p "$(echo -e "$PREFIX Do you want to reboot now to apply changes? (y/n): ")" FINALREBOOT
+if [[ "$FINALREBOOT" =~ ^[Yy]$ ]]; then
+  echo -e "$PREFIX 🔁 Rebooting now..."
+  reboot
+else
+  echo -e "$PREFIX 🚫 Reboot skipped. You can reboot manually later."
+fi
