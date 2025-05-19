@@ -8,7 +8,37 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.1\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.2\n===============================${RESET}\n"
+
+# --- Preflight Check: Existing Containers ---
+EXISTING_CONTAINERS=()
+
+if docker ps -a --format '{{.Names}}' | grep -q "^traefik$"; then
+  EXISTING_CONTAINERS+=("traefik")
+fi
+
+if docker ps -a --format '{{.Names}}' | grep -q "^portainer$"; then
+  EXISTING_CONTAINERS+=("portainer")
+fi
+
+if [ ${#EXISTING_CONTAINERS[@]} -gt 0 ]; then
+  echo -e "$PREFIX ⚠️  We detected existing container(s): ${EXISTING_CONTAINERS[*]}"
+  echo -e "$PREFIX ℹ️  We recommend running this script on a fresh VPS to avoid conflicts."
+
+  read -p "$(echo -e "$PREFIX Would you like to uninstall existing DockFlareEZ components now? (y/n): ")" DO_UNINSTALL
+  if [[ "$DO_UNINSTALL" =~ ^[Yy]$ ]]; then
+    echo -e "$PREFIX 🧹 Removing existing containers and volumes..."
+    docker stop traefik portainer 2>/dev/null
+    docker rm traefik portainer 2>/dev/null
+    docker volume rm portainer_portainer_data 2>/dev/null
+    docker network rm dockflare 2>/dev/null
+    rm -rf /opt/traefik /opt/portainer
+    echo -e "$PREFIX ✅ Cleanup complete."
+  else
+    echo -e "$PREFIX ❌ Aborting installation. Please clean up manually or rerun this script on a fresh VPS."
+    exit 1
+  fi
+fi
 
 # --- Track Success Flags ---
 UPDATE_OK=false
