@@ -6,7 +6,7 @@ VERSION="v1.2"
 # --- App Info ---
 APP_NAME="Uptime Kuma"
 APP_ID="uptime-kuma"
-GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main"
+GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main"
 
 # --- Branding ---
 BLUE='\e[34m'
