@@ -10,58 +10,44 @@ GREEN='\e[32m'
 RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
-# --- Tools to check ---
-TOOLS=(
-  "dfapps:dfapps.sh"
-  "dfconfig:dfconfig.sh"
-  "dfdeploy:dfdeploy.sh"
-  "dfupdate:dfupdate.sh"
-)
-GITHUB_BASE="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main"
+# --- URLs ---
+declare -A COMPONENTS
+COMPONENTS["dfapps"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfapps.sh"
+COMPONENTS["dfdeploy"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfdeploy.sh"
+COMPONENTS["dfconfig"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfconfig.sh"
+COMPONENTS["dfupdate"]="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfupdate.sh"
 
 echo -e "$PREFIX 🔄 Updating DockFlareEZ tools..."
 
-for TOOL in "${TOOLS[@]}"; do
-  LOCAL_PATH="/usr/local/bin/$TOOL"
-  REMOTE_URL="$GITHUB_BASE/${TOOL}.sh"
+for tool in "${!COMPONENTS[@]}"; do
+  URL="${COMPONENTS[$tool]}"
+  echo -e "\n$PREFIX 📦 Checking $tool..."
 
-  echo -e "\n$PREFIX 📦 Checking $TOOL..."
-
-  REMOTE_VERSION=$(curl -fsSL "$REMOTE_URL" | grep -E '^VERSION=' | cut -d'"' -f2)
-
-  if [ ! -f "$LOCAL_PATH" ]; then
-    echo -e "$PREFIX ➕ $TOOL not found locally. Installing version $REMOTE_VERSION..."
-    curl -fsSL "$REMOTE_URL" -o "$LOCAL_PATH"
-    chmod +x "$LOCAL_PATH"
-    echo -e "$PREFIX ✅ $TOOL installed."
-    continue
+  # Get local version
+  if [[ -f "/usr/local/bin/$tool" ]]; then
+    LOCAL_VERSION=$(grep -E '^# --- Version ---' "/usr/local/bin/$tool" -A 1 | tail -n 1 | cut -d'"' -f2)
+  else
+    LOCAL_VERSION="(not installed)"
   fi
 
-  LOCAL_VERSION=$(grep -E '^VERSION=' "$LOCAL_PATH" | cut -d'"' -f2)
-
-  if [ -z "$LOCAL_VERSION" ]; then
-    echo -e "$PREFIX ⚠️ Local version missing. Updating to latest ($REMOTE_VERSION)..."
-    curl -fsSL "$REMOTE_URL" -o "$LOCAL_PATH"
-    chmod +x "$LOCAL_PATH"
-    echo -e "$PREFIX ✅ $TOOL updated."
-    continue
-  fi
+  # Get latest version
+  LATEST_VERSION=$(curl -fsSL "$URL" | grep -E '^# --- Version ---' -A 1 | tail -n 1 | cut -d'"' -f2)
 
   echo -e "$PREFIX 🧮 Local version:  $LOCAL_VERSION"
-  echo -e "$PREFIX 🆕 Latest version: $REMOTE_VERSION"
+  echo -e "$PREFIX 🆕 Latest version: $LATEST_VERSION"
 
-  if [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
-    read -p "$(echo -e "$PREFIX 🚀 Update $TOOL to $REMOTE_VERSION? (y/n): ")" CONFIRM
+  if [[ "$LOCAL_VERSION" != "$LATEST_VERSION" || "$LOCAL_VERSION" == "(not installed)" || -z "$LATEST_VERSION" ]]; then
+    read -p "$(echo -e "$PREFIX 🚀 Update $tool to $LATEST_VERSION? (y/n): ")" CONFIRM
     if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-      curl -fsSL "$REMOTE_URL" -o "$LOCAL_PATH"
-      chmod +x "$LOCAL_PATH"
-      echo -e "$PREFIX ✅ $TOOL updated to $REMOTE_VERSION"
+      sudo curl -fsSL "$URL" -o "/usr/local/bin/$tool"
+      sudo chmod +x "/usr/local/bin/$tool"
+      echo -e "$PREFIX ✅ $tool updated to $LATEST_VERSION."
     else
-      echo -e "$PREFIX ❌ Skipped updating $TOOL"
+      echo -e "$PREFIX ⚠️ Skipped updating $tool."
     fi
   else
-    echo -e "$PREFIX ✅ $TOOL is already up to date"
+    echo -e "$PREFIX ✅ $tool is already up to date."
   fi
 done
 
-echo -e "\n$PREFIX 🧼 Update check complete."
+echo -e "\n$PREFIX ✅ All components checked."
