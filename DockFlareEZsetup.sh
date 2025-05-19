@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4d\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4e\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -289,7 +289,16 @@ EXISTING_RECORD_ID=\$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 # --- Create or Update record with proxied true ---
-RECORD_PAYLOAD="{\\\"type\\\":\\\"A\\\",\\\"name\\\":\\\"\$FQDN\\\",\\\"content\\\":\\\"\$IP\\\",\\\"ttl\\\":120,\\\"proxied\\\":\${PROXIED}}"
+RECORD_PAYLOAD=$(cat <<EOF
+{
+  "type": "A",
+  "name": "$FQDN",
+  "content": "$IP",
+  "ttl": 120,
+  "proxied": $PROXIED
+}
+EOF
+)
 
 if [[ -n "\$EXISTING_RECORD_ID" && "\$EXISTING_RECORD_ID" != "null" ]]; then
   RESPONSE=\$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records/\${EXISTING_RECORD_ID}" \
