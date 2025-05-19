@@ -10,15 +10,17 @@ RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4\n===============================${RESET}\n"
 
-# --- Preflight Check: Existing Containers ---
+# --- Preflight Check: Existing Containers (only if Docker exists) ---
 EXISTING_CONTAINERS=()
 
-if docker ps -a --format '{{.Names}}' | grep -q "^traefik$"; then
-  EXISTING_CONTAINERS+=("traefik")
-fi
+if command -v docker >/dev/null 2>&1; then
+  if docker ps -a --format '{{.Names}}' | grep -q "^traefik$"; then
+    EXISTING_CONTAINERS+=("traefik")
+  fi
 
-if docker ps -a --format '{{.Names}}' | grep -q "^portainer$"; then
-  EXISTING_CONTAINERS+=("portainer")
+  if docker ps -a --format '{{.Names}}' | grep -q "^portainer$"; then
+    EXISTING_CONTAINERS+=("portainer")
+  fi
 fi
 
 if [ ${#EXISTING_CONTAINERS[@]} -gt 0 ]; then
