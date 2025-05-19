@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.1\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.2\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
@@ -169,9 +169,58 @@ DOCKER_OK=true
 echo -e "$PREFIX ✅ Docker installed."
 
 # --- Deploy Traefik ---
-mkdir -p /opt/traefik && touch /opt/traefik/acme.json
+mkdir -p /opt/traefik
+touch /opt/traefik/acme.json
 chmod 600 /opt/traefik/acme.json
 
+# --- Dynamic Config ---
+cat <<EOF > /opt/traefik/traefik_dynamic.yml
+http:
+  middlewares:
+    globalHeaders:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Host: "dockflare.${CF_ZONE}"
+        customResponseHeaders:
+          X-Powered-By: "DockFlareEZ"
+        frameDeny: true
+        sslRedirect: true
+        stsIncludeSubdomains: true
+        stsSeconds: 31536000
+
+    secureHeaders:
+      headers:
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+
+    robotHeaders:
+      headers:
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+
+    cloudflarewarp:
+      ipWhiteList:
+        sourceRange:
+          - "103.21.244.0/22"
+          - "103.22.200.0/22"
+          - "103.31.4.0/22"
+          - "104.16.0.0/13"
+          - "104.24.0.0/14"
+          - "108.162.192.0/18"
+          - "131.0.72.0/22"
+          - "141.101.64.0/18"
+          - "162.158.0.0/15"
+          - "172.64.0.0/13"
+          - "173.245.48.0/20"
+          - "188.114.96.0/20"
+          - "190.93.240.0/20"
+          - "197.234.240.0/22"
+          - "198.41.128.0/17"
+EOF
+
+# --- Compose File ---
 cat <<EOF > /opt/traefik/docker-compose.yml
 services:
   traefik:
@@ -182,25 +231,29 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--providers.docker=true"
+      - "--providers.file.filename=/etc/traefik/traefik_dynamic.yml"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
-      - "--certificatesresolvers.cloudflare.acme.email=$CFEMAIL"
+      - "--certificatesresolvers.cloudflare.acme.email=${CFEMAIL}"
       - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
     environment:
-      - CF_API_TOKEN=$CFTOKEN
+      - CF_API_TOKEN=${CFTOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./acme.json:/letsencrypt/acme.json
+      - ./traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yml
     networks:
       - dockflare
+
 networks:
   dockflare:
     external: true
 EOF
 
+# --- Launch Traefik ---
 docker network create dockflare > /dev/null 2>&1 || true
 cd /opt/traefik && docker compose up -d && TRAEFIK_OK=true
 echo -e "$PREFIX 🚦 Traefik deployed."
@@ -215,17 +268,35 @@ services:
     container_name: portainer
     restart: unless-stopped
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(\`portainer.$CF_ZONE\`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=cloudflare"
+      com.github.saltbox.saltbox_managed: true
+      traefik.enable: true
+
+      # HTTP Router (redirect to HTTPS)
+      traefik.http.routers.portainer-http.entrypoints: web
+      traefik.http.routers.portainer-http.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer-http.middlewares: globalHeaders@file,redirect-to-https@docker,robotHeaders@file,cloudflarewarp@docker
+      traefik.http.routers.portainer-http.service: portainer
+
+      # HTTPS Router
+      traefik.http.routers.portainer.entrypoints: websecure
+      traefik.http.routers.portainer.rule: Host(\`portainer.${CF_ZONE}\`)
+      traefik.http.routers.portainer.middlewares: globalHeaders@file,secureHeaders@file,robotHeaders@file,cloudflarewarp@docker
+      traefik.http.routers.portainer.tls.certresolver: cloudflare
+      traefik.http.routers.portainer.tls.options: securetls@file
+      traefik.http.routers.portainer.service: portainer
+
+      # Internal port used by Portainer
+      traefik.http.services.portainer.loadbalancer.server.port: 9000
+
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     networks:
       - dockflare
+
 volumes:
   portainer_data:
+
 networks:
   dockflare:
     external: true
