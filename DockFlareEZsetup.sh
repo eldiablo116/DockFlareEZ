@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v4.2\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.0\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
@@ -54,7 +54,7 @@ UPDATE_OK=true
 
 # --- Cloudflare Input ---
 read -p "$(echo -e "$PREFIX Cloudflare email: ")" CFEMAIL
-read -p "$(echo -e "$PREFIX Cloudflare API token: ")" CFTOKEN
+read -p "$(echo -e "$PREFIX Cloudflare Global API Key: ")" CFAPIKEY
 read -p "$(echo -e "$PREFIX Your domain (e.g., example.com): ")" DOMAIN
 
 # --- Cloudflare Zone Detection ---
@@ -239,8 +239,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    environment:
-      - CF_API_TOKEN=${CFTOKEN}
+environment:
+      - CLOUDFLARE_EMAIL=${CFEMAIL}
+      - CLOUDFLARE_API_KEY=${CFAPIKEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./acme.json:/letsencrypt/acme.json
