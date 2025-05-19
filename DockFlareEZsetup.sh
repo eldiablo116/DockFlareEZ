@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.7\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v6.0\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -482,6 +482,40 @@ else
   echo -e "$PREFIX ⚠️ Skipping DNS record creation for Portainer."
 fi
 
+# --- Install global dcud (Docker Compose Up + DNS) helper ---
+echo -e "$PREFIX 🧩 Installing 'dcud' command for auto-DNS..."
+
+cat <<'EOF' >> /home/$NEWUSER/.bashrc
+
+# DockFlareEZ: docker compose up -d + Cloudflare DNS helper
+dcud() {
+  docker compose up -d "$@"
+
+  if [ -f docker-compose.yml ]; then
+    HOST_LINE=$(grep -oE 'Host\("([a-zA-Z0-9.-]+)"\)' docker-compose.yml | head -n 1)
+    if [ -n "$HOST_LINE" ]; then
+      FQDN=$(echo "$HOST_LINE" | cut -d'"' -f2)
+      SUBDOMAIN="${FQDN%%.*}"
+      DOMAIN="${FQDN#*.}"
+      IP=$(curl -s https://icanhazip.com)
+
+      echo "[DockFlareEZ] 🛰️  Detected domain: $FQDN"
+      echo "[DockFlareEZ] 🔧 Running DNS update for $SUBDOMAIN.$DOMAIN → $IP"
+
+      export CLOUDFLARE_EMAIL="$CLOUDFLARE_EMAIL"
+      export CLOUDFLARE_API_KEY="$CLOUDFLARE_API_KEY"
+      /opt/dns-helper.sh "$SUBDOMAIN" "$DOMAIN" "$IP"
+    else
+      echo "[DockFlareEZ] ⚠️  No Host(\"...\") rule found in docker-compose.yml"
+    fi
+  else
+    echo "[DockFlareEZ] ❌ No docker-compose.yml in this directory."
+  fi
+}
+EOF
+
+chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
+echo -e "$PREFIX ✅ 'dcud' command installed for $NEWUSER"
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
@@ -492,6 +526,8 @@ echo -e "$PREFIX User created:         $([ "$USER_OK" = true ] && echo ✅ || ec
 echo -e "$PREFIX Docker installed:     $([ "$DOCKER_OK" = true ] && echo ✅ || echo ❌)"
 echo -e "$PREFIX Traefik running:      $([ "$TRAEFIK_OK" = true ] && echo ✅ || echo ❌)"
 echo -e "$PREFIX Portainer running:    $([ "$PORTAINER_OK" = true ] && echo ✅ || echo ❌)"
+echo -e "$PREFIX DNS helper:           $([ -f /opt/dns-helper.sh ] && echo ✅ /opt/dns-helper.sh || echo ❌)"
+echo -e "$PREFIX dcud command:         ✅ Available via ~/.bashrc for user '$NEWUSER'"
 
 echo -e "\n${GREEN}Done! Your VPS is ready. SSH login: ssh -p $SSHPORT $NEWUSER@$VPS_IP${RESET}"
 echo -e "${GREEN}Temporary password: $USERPASS${RESET}"
