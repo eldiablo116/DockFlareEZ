@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/assets/logo_transparent.png" alt="DockFlareEZ Logo" width="200" />
 </p>
 
-<h1 align="center">🚀 DockFlareEZsetup</h1>
+<h1 align="center">🚀 DockFlareEZ</h1>
 <p align="center">Your zero-hassle VPS bootstrapper for Docker, Traefik, Portainer & Cloudflare DNS automation.</p>
 
 ---
