@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.0\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.1\n===============================${RESET}\n"
 
 # --- Track Success Flags ---
 UPDATE_OK=false
@@ -57,10 +57,11 @@ read -p "$(echo -e "$PREFIX Cloudflare email: ")" CFEMAIL
 read -p "$(echo -e "$PREFIX Cloudflare Global API Key: ")" CFAPIKEY
 read -p "$(echo -e "$PREFIX Your domain (e.g., example.com): ")" DOMAIN
 
-# --- Cloudflare Zone Detection ---
+# --- Zone detection ---
 CF_ZONE="$DOMAIN"
 CF_ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$CF_ZONE" \
-  -H "Authorization: Bearer $CFTOKEN" \
+  -H "X-Auth-Email: $CFEMAIL" \
+  -H "X-Auth-Key: $CFAPIKEY" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 if [[ "$CF_ZONE_ID" == "null" || -z "$CF_ZONE_ID" ]]; then
@@ -76,7 +77,8 @@ TEST_SUB="dockflareez-test-$(shuf -i 1000-9999 -n 1)"
 VPS_IP=$(curl -4 -s https://icanhazip.com | tr -d '\n')
 
 RECORD_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
-  -H "Authorization: Bearer $CFTOKEN" \
+  -H "X-Auth-Email: $CFEMAIL" \
+  -H "X-Auth-Key: $CFAPIKEY" \
   -H "Content-Type: application/json" \
   --data "{\"type\":\"A\",\"name\":\"$TEST_SUB.$CF_ZONE\",\"content\":\"$VPS_IP\",\"ttl\":120,\"proxied\":false}")
 
@@ -103,14 +105,17 @@ if [ "$DNS_OK" != true ]; then
   exit 1
 fi
 
-# --- Clean up test DNS record ---
+# --- Clean up test record ---
 RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=$TEST_SUB.$CF_ZONE" \
-  -H "Authorization: Bearer $CFTOKEN" \
+  -H "X-Auth-Email: $CFEMAIL" \
+  -H "X-Auth-Key: $CFAPIKEY" \
   -H "Content-Type: application/json" | jq -r '.result[0].id')
 
 if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" ]]; then
   curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
-    -H "Authorization: Bearer $CFTOKEN" > /dev/null
+    -H "X-Auth-Email: $CFEMAIL" \
+    -H "X-Auth-Key: $CFAPIKEY" \
+    -H "Content-Type: application/json" > /dev/null
   echo -e "$PREFIX 🧹 Cleaned up test DNS record."
 fi
 
