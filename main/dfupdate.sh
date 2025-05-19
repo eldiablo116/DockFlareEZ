@@ -11,7 +11,12 @@ RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
 # --- Tools to check ---
-TOOLS=("dfapps" "dfconfig" "dfdeploy" "dfupdate")
+TOOLS=(
+  "dfapps:dfapps.sh"
+  "dfconfig:dfconfig.sh"
+  "dfdeploy:dfdeploy.sh"
+  "dfupdate:dfupdate.sh"
+)
 GITHUB_BASE="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main"
 
 echo -e "$PREFIX 🔄 Updating DockFlareEZ tools..."
