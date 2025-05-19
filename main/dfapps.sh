@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.3"
+VERSION="v1.4"
 
 # --- Colors ---
 BLUE='\e[34m'
@@ -17,10 +17,11 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Load original user environment if run via sudo ---
-if [ -n "$SUDO_USER" ]; then
+# --- Load user environment if running with sudo ---
+if [ "$EUID" -eq 0 ] && [ -n "$SUDO_USER" ]; then
   USER_BASHRC="/home/$SUDO_USER/.bashrc"
   if [ -f "$USER_BASHRC" ]; then
+    # shellcheck disable=SC1090
     source "$USER_BASHRC"
   fi
 fi
