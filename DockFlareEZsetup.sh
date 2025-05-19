@@ -8,7 +8,23 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4b\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4c\n===============================${RESET}\n"
+
+# --- Reusable Function: Prompt for DNS Record ---
+create_dns_record_prompt() {
+  local SUBDOMAIN=$1
+  local DOMAIN=$2
+  local IP=$3
+
+  read -p "$(echo -e "$PREFIX 🌐 Create Cloudflare DNS record for '${SUBDOMAIN}.${DOMAIN}'? (y/n): ")" CREATE_DNS
+  if [[ "$CREATE_DNS" =~ ^[Yy]$ ]]; then
+    export CLOUDFLARE_EMAIL="$CFEMAIL"
+    export CLOUDFLARE_API_KEY="$CFAPIKEY"
+    /opt/dns-helper.sh "$SUBDOMAIN" "$DOMAIN" "$IP"
+  else
+    echo -e "$PREFIX ⚠️ Skipped DNS record creation for $SUBDOMAIN."
+  fi
+}
 
 # --- Preflight Check: Existing Containers (only if Docker exists) ---
 EXISTING_CONTAINERS=()
