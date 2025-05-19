@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v7.0\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v7.1\n===============================${RESET}\n"
 
 # --- Reusable Function: Prompt for DNS Record ---
 create_dns_record_prompt() {
@@ -538,6 +538,14 @@ echo -e "$PREFIX 💾 Saving Cloudflare environment variables to ~/.bashrc for $
 
 chown $NEWUSER:$NEWUSER /home/$NEWUSER/.bashrc
 echo -e "$PREFIX ✅ Cloudflare variables persisted to /home/$NEWUSER/.bashrc"
+
+# --- Install dfconfig (Cloudflare config editor) ---
+echo -e "$PREFIX 🛠️ Installing dfconfig utility..."
+
+curl -fsSL https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/main/dfconfig.sh -o /usr/local/bin/dfconfig
+chmod +x /usr/local/bin/dfconfig
+
+echo -e "$PREFIX ✅ You can now run 'dfconfig' to edit your Cloudflare credentials."
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
