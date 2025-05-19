@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4a\n===============================${RESET}\n"
 
 # --- Preflight Check: Existing Containers (only if Docker exists) ---
 EXISTING_CONTAINERS=()
@@ -299,9 +299,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
-environment:
-      - CLOUDFLARE_EMAIL=${CFEMAIL}
-      - CLOUDFLARE_API_KEY=${CFAPIKEY}
+    environment:
+      CLOUDFLARE_EMAIL: "${CFEMAIL}"
+      CLOUDFLARE_API_KEY: "${CFAPIKEY}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./acme.json:/letsencrypt/acme.json
