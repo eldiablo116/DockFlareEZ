@@ -20,10 +20,10 @@ bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/D
 ## 🔧 What You'll Need Before You Begin
 
 1. **A Cloudflare account** managing your domain  
-   → [https://dash.cloudflare.com](https://dash.cloudflare.com)
+   → <a href="https://dash.cloudflare.com" target="_blank">https://dash.cloudflare.com</a>
 
 2. **A Cloudflare API Token**
-   - Go to: [Create an API Token](https://dash.cloudflare.com/profile/api-tokens)
+   - Go to: <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Create an API Token</a>
    - Use the **"Edit zone DNS"** template
    - Required permissions:
      - Zone:DNS → Edit
