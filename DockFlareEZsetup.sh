@@ -8,7 +8,7 @@ RESET='\e[0m'
 
 # --- Branding ---
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
-echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.2\n===============================${RESET}\n"
+echo -e "${ORANGE}===============================\n   DockFlare EZSetup v5.4\n===============================${RESET}\n"
 
 # --- Preflight Check: Existing Containers ---
 EXISTING_CONTAINERS=()
@@ -25,15 +25,34 @@ if [ ${#EXISTING_CONTAINERS[@]} -gt 0 ]; then
   echo -e "$PREFIX ⚠️  We detected existing container(s): ${EXISTING_CONTAINERS[*]}"
   echo -e "$PREFIX ℹ️  We recommend running this script on a fresh VPS to avoid conflicts."
 
-  read -p "$(echo -e "$PREFIX Would you like to uninstall existing DockFlareEZ components now? (y/n): ")" DO_UNINSTALL
+  read -p "$(echo -e "$PREFIX Would you like to uninstall existing DockFlareEZ components and reset the VPS? (y/n): ")" DO_UNINSTALL
   if [[ "$DO_UNINSTALL" =~ ^[Yy]$ ]]; then
-    echo -e "$PREFIX 🧹 Removing existing containers and volumes..."
-    docker stop traefik portainer 2>/dev/null
-    docker rm traefik portainer 2>/dev/null
-    docker volume rm portainer_portainer_data 2>/dev/null
-    docker network rm dockflare 2>/dev/null
-    rm -rf /opt/traefik /opt/portainer
-    echo -e "$PREFIX ✅ Cleanup complete."
+    echo -e "$PREFIX 🧹 Removing existing containers and config..."
+    docker stop traefik portainer > /dev/null 2>&1
+    docker rm traefik portainer > /dev/null 2>&1
+    docker volume rm portainer_portainer_data > /dev/null 2>&1
+    docker network rm dockflare > /dev/null 2>&1
+    cd /
+    rm -rf /opt/traefik /opt/portainer > /dev/null 2>&1
+
+    echo -e "$PREFIX 🔧 Uninstalling Docker..."
+    apt purge -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
+    apt autoremove -y -qq > /dev/null 2>&1
+    rm -rf /var/lib/docker /etc/docker /var/lib/containerd /var/run/docker.sock > /dev/null 2>&1
+
+    echo -e "$PREFIX ✅ Docker and related components uninstalled."
+
+    echo -e "$PREFIX 🔁 Reboot is required to complete cleanup."
+    echo -e "$PREFIX 💡 After reboot, please re-run this script from a fresh terminal session."
+
+    read -p "$(echo -e "$PREFIX Reboot now? (y/n): ")" CONFIRM_REBOOT
+    if [[ "$CONFIRM_REBOOT" =~ ^[Yy]$ ]]; then
+      reboot
+    else
+      echo -e "$PREFIX ⚠️ Reboot skipped. Please reboot manually before continuing."
+    fi
+
+    exit 0
   else
     echo -e "$PREFIX ❌ Aborting installation. Please clean up manually or rerun this script on a fresh VPS."
     exit 1
