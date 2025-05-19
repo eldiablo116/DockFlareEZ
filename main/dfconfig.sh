@@ -2,49 +2,59 @@
 
 # --- Version ---
 VERSION="v1.1"
+#!/bin/bash
 
 # --- Colors ---
 BLUE='\e[34m'
 ORANGE='\e[38;5;208m'
 GREEN='\e[32m'
+RED='\e[31m'
 RESET='\e[0m'
 PREFIX="$(echo -e "${BLUE}[Dock${ORANGE}Flare${GREEN}EZ${RESET}]")"
 
-# --- Load current values from .bashrc (if present) ---
-EMAIL=$(grep 'CLOUDFLARE_EMAIL=' ~/.bashrc | cut -d= -f2- | tr -d '"')
-KEY=$(grep 'CLOUDFLARE_API_KEY=' ~/.bashrc | cut -d= -f2- | tr -d '"')
-ZONE=$(grep 'CF_ZONE=' ~/.bashrc | cut -d= -f2- | tr -d '"')
+# --- Config File ---
+CONFIG_FILE="/home/$(whoami)/.bashrc"
 
-echo -e "$PREFIX 📦 Current Cloudflare config:"
-echo -e "$PREFIX Email:  ${EMAIL:-<not set>}"
-echo -e "$PREFIX API Key: ${KEY:+<set>}${KEY:-<not set>}"
-echo -e "$PREFIX Domain: ${ZONE:-<not set>}"
+# --- Extract current config ---
+CF_EMAIL=$(grep 'CLOUDFLARE_EMAIL' "$CONFIG_FILE" | cut -d'"' -f2)
+CF_API_KEY=$(grep 'CLOUDFLARE_API_KEY' "$CONFIG_FILE" | cut -d'"' -f2)
+CF_ZONE=$(grep 'CF_ZONE' "$CONFIG_FILE" | cut -d'"' -f2)
 
-read -p "$PREFIX Do you want to update these values? (y/n): " CONFIRM
+# --- Status Indicators ---
+EMAIL_STATUS=$([[ -n "$CF_EMAIL" ]] && echo "✅" || echo "❌")
+API_STATUS=$([[ -n "$CF_API_KEY" ]] && echo "✅" || echo "❌")
+ZONE_STATUS=$([[ -n "$CF_ZONE" ]] && echo "✅" || echo "❌")
 
-if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-  echo -e "$PREFIX 🚫 No changes made."
-  exit 0
+# --- Masked API Key ---
+if [[ -n "$CF_API_KEY" ]]; then
+  API_MASKED="************${CF_API_KEY: -4}"
+else
+  API_MASKED="(not set)"
 fi
 
-# --- Prompt for new values ---
-read -p "$PREFIX Enter new Cloudflare email: " EMAIL
-read -p "$PREFIX Enter new Cloudflare API key: " KEY
-read -p "$PREFIX Enter your domain (e.g. example.com): " ZONE
+# --- Show current config ---
+echo -e "$PREFIX 📦 Current Cloudflare config:"
+echo -e "$PREFIX Email:   $CF_EMAIL $EMAIL_STATUS"
+echo -e "$PREFIX API Key: $API_MASKED $API_STATUS"
+echo -e "$PREFIX Domain:  $CF_ZONE $ZONE_STATUS"
 
-# --- Remove existing entries ---
-sed -i '/CLOUDFLARE_EMAIL=/d' ~/.bashrc
-sed -i '/CLOUDFLARE_API_KEY=/d' ~/.bashrc
-sed -i '/CF_ZONE=/d' ~/.bashrc
+# --- Prompt to update ---
+read -p "$(echo -e "$PREFIX Do you want to update these values? (y/n): ")" UPDATE
+if [[ "$UPDATE" =~ ^[Yy]$ ]]; then
+  read -p "$PREFIX New Cloudflare email: " NEW_EMAIL
+  read -p "$PREFIX New Cloudflare API Key: " NEW_KEY
+  read -p "$PREFIX New domain (zone): " NEW_ZONE
 
-# --- Add new ones ---
-{
-  echo ""
-  echo "# DockFlareEZ Cloudflare credentials (updated)"
-  echo "export CLOUDFLARE_EMAIL=\"$EMAIL\""
-  echo "export CLOUDFLARE_API_KEY=\"$KEY\""
-  echo "export CF_ZONE=\"$ZONE\""
-} >> ~/.bashrc
+  sed -i '/CLOUDFLARE_EMAIL/d' "$CONFIG_FILE"
+  sed -i '/CLOUDFLARE_API_KEY/d' "$CONFIG_FILE"
+  sed -i '/CF_ZONE/d' "$CONFIG_FILE"
 
-echo -e "$PREFIX ✅ Configuration updated."
-echo -e "$PREFIX 🔁 Please run: source ~/.bashrc or restart your session to apply."
+  echo "export CLOUDFLARE_EMAIL=\"$NEW_EMAIL\"" >> "$CONFIG_FILE"
+  echo "export CLOUDFLARE_API_KEY=\"$NEW_KEY\"" >> "$CONFIG_FILE"
+  echo "export CF_ZONE=\"$NEW_ZONE\"" >> "$CONFIG_FILE"
+
+  echo -e "$PREFIX ✅ Cloudflare credentials updated in $CONFIG_FILE"
+  echo -e "$PREFIX 🔄 Please run: source $CONFIG_FILE"
+else
+  echo -e "$PREFIX ❌ No changes made."
+fi
