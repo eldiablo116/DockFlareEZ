@@ -21,9 +21,7 @@ fi
 
 # --- App Catalog ---
 declare -A APPS
-APPS["Appsmith"]="Low-code dashboard builder"
 APPS["Uptime Kuma"]="Self-hosted monitoring & alerts"
-APPS["Grafana"]="Metrics dashboard and alerting"
 
 GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/dfapps"
 
