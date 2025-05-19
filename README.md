@@ -25,9 +25,7 @@ bash <(curl -s https://raw.githubusercontent.com/eldiablo116/DockFlareEZ-/main/D
 2. **Cloudflare Global API Key** (not token)
    - Find it under: https://dash.cloudflare.com/profile/api-tokens
 
-3. **A Domain** pointing to your VPS IP (e.g. `example.com`)  
-   - Add an `A` record at Cloudflare for your domain/subdomain  
-   - Orange cloud proxy **ON** is supported
+3. **A Domain**
 
 ---
 
