@@ -549,11 +549,22 @@ chmod +x /usr/local/bin/dfupdate
 echo -e "$PREFIX ✅ You can now run 'dfupdate' to update all DockFlareEZ tools."
 
 # --- Set MOTD ---
+echo -e "$PREFIX 🧾 Disabling Ubuntu dynamic MOTD..."
+
+# Disable dynamic MOTD scripts
+chmod -x /etc/update-motd.d/* 2>/dev/null
+
+# Disable motd-news service
+systemctl disable motd-news.service > /dev/null 2>&1
+systemctl mask motd-news.service > /dev/null 2>&1
+
+# Backup existing MOTD
 if [ -f /etc/motd ]; then
   cp /etc/motd /etc/motd.bak
   echo -e "$PREFIX 🧾 Existing MOTD backed up to /etc/motd.bak"
 fi
 
+# Write custom MOTD
 cat <<EOF > /etc/motd
 
 🧭  Powered by DockFlareEZ
@@ -571,6 +582,8 @@ cat <<EOF > /etc/motd
 Happy deploying! 🚀
 
 EOF
+
+echo -e "$PREFIX ✅ Custom MOTD applied."
 
 # --- Summary Report ---
 echo -e "\n${ORANGE}========== SETUP SUMMARY ==========${RESET}"
