@@ -25,6 +25,8 @@ fi
 # Try to source original user’s environment (Cloudflare vars) from their bashrc
 source "/home/$SUDO_USER/.bashrc"
 
+echo -e "$PREFIX 🧩 Running DockFlareEZ from: ${GREEN}$0${RESET}"
+
 # Verify that Cloudflare vars are now set
 if [[ -z "$CLOUDFLARE_EMAIL" || -z "$CLOUDFLARE_API_KEY" || -z "$CF_ZONE" ]]; then
   echo -e "$PREFIX ❌ Cloudflare environment variables not found."
@@ -44,7 +46,8 @@ fi
 
 # --- App Catalog ---
 declare -A APPS
-APPS["Uptime Kuma"]="Self-hosted monitoring & alerts"
+APPS["Uptime Kuma"]="Self-hosted up-time monitoring & alerts"
+APPS["Metabase"]="Fast analytics with the friendly UX and integrated tooling"
 
 GITHUB_REPO="https://raw.githubusercontent.com/eldiablo116/DockFlareEZ/main/dfapps"
 
