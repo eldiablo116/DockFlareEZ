@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.0"
+VERSION="v1.1"
 
 # --- App Info ---
 APP_NAME="Metabase"
@@ -44,6 +44,7 @@ services:
     environment:
       - MB_DB_FILE=/metabase-data/metabase.db
       - JAVA_TIMEZONE=Europe/London
+      - MB_SITE_URL=https://${SUBDOMAIN}.${CF_ZONE}
     volumes:
       - ./metabase-data:/metabase-data
     labels:
@@ -76,6 +77,7 @@ networks:
   containers_internal:
     external: true
 EOF
+
 # --- Deploy ---
 cd "$APP_DIR"
 echo -e "$PREFIX 🚀 Deploying $APP_NAME..."
