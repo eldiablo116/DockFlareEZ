@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Version ---
-VERSION="v1.5"
+VERSION="v1.6"
 
 # --- Colors ---
 BLUE='\e[34m'
