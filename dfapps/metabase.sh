@@ -68,12 +68,14 @@ services:
 
     networks:
       - dockflare
+      - containers_internal
 
 networks:
   dockflare:
     external: true
+  containers_internal:
+    external: true
 EOF
-
 # --- Deploy ---
 cd "$APP_DIR"
 echo -e "$PREFIX 🚀 Deploying $APP_NAME..."
